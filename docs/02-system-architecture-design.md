@@ -25,3 +25,19 @@ flowchart TD
     SQLite -.->|local metadata| Desktop
     FileSystem -.->|local images| Desktop
 ```
+
+## Technology Stack
+
+### Desktop App Implementation
+
+- **Framework**: Tauri + Next.js
+- **Screenshot Capture**: `screenshots` Rust crate for cross-platform support
+- **Global Keybinds**: `tauri-plugin-global-shortcut`
+- **Overlay GUI**: Tauri window management with transparent, always-on-top windows
+- **Local Storage**: SQLite via `tauri-plugin-sql`
+
+### Platform-Specific Considerations
+
+- **Windows**: Windows.Graphics.Capture API fallback
+- **macOS**: CGWindowListCreateImage integration
+- **Linux**: X11 screenshot support
