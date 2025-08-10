@@ -105,6 +105,8 @@ jobs:
         defaults:
             run:
                 working-directory: frontend
+                shell: bash
+        timeout-minutes: 30
         steps:
             - uses: actions/checkout@v4
 
