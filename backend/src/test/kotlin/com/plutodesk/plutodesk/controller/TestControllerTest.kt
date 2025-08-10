@@ -19,12 +19,4 @@ class TestControllerTest(@Autowired val mockMvc: MockMvc) {
             .andExpect(jsonPath("$.status").value("UP"))
             .andExpect(jsonPath("$.groups").isArray())
     }
-
-    @Test
-    fun `failing test`() {
-        mockMvc.perform(get("/actuator/health"))
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.status").value("ACME")) // This should fail
-            .andExpect(jsonPath("$.groups").isArray())
-    }
 }
