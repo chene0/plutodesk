@@ -75,6 +75,8 @@ jobs:
               run: npm ci
 
             - name: Lint
+              env:
+                  CI: true
               run: npm run lint --if-present
 
             - name: Test
@@ -127,9 +129,6 @@ jobs:
 
             - name: Install deps
               run: npm ci
-
-            - name: Lint (JS/TS)
-              run: npm run lint --if-present
 
             - name: Lint (Rust)
               working-directory: frontend/src-tauri
