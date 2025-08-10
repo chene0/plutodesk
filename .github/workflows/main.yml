@@ -185,7 +185,7 @@ jobs:
               if: github.event_name == 'pull_request'
               env:
                   CI: true
-              run: npm run tauri -- build -- --bundles none
+              run: npm run tauri:build -- --bundles none
             - name: Build Tauri app (push/workflow_dispatch)
               if: github.event_name != 'pull_request'
               env:
