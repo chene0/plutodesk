@@ -1,0 +1,160 @@
+name: CI
+
+on:
+    push:
+        branches: [main, develop, "**"]
+    pull_request:
+
+concurrency:
+    group: ci-${{ github.ref }}
+    cancel-in-progress: true
+
+permissions:
+    contents: read
+
+env:
+    NODE_VERSION: "20"
+    JAVA_VERSION: "21"
+
+jobs:
+    backend:
+        name: Backend (Spring Boot)
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: backend
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Set up Temurin JDK
+              uses: actions/setup-java@v4
+              with:
+                  distribution: temurin
+                  java-version: ${{ env.JAVA_VERSION }}
+                  cache: gradle
+
+            - name: Make gradlew executable
+              run: chmod +x gradlew
+
+            - name: Lint, test, build
+              run: ./gradlew --no-daemon clean check bootJar
+
+            - name: Upload test results
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: backend-tests
+                  path: backend/build/test-results/**/*.xml
+                  if-no-files-found: ignore
+
+            - name: Upload backend jar
+              if: success()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: backend-jar
+                  path: backend/build/libs/*.jar
+                  if-no-files-found: ignore
+
+    frontend-web:
+        name: Frontend Web (Next.js)
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: frontend
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Set up Node
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: "npm"
+                  cache-dependency-path: frontend/package-lock.json
+
+            - name: Install deps
+              run: npm ci
+
+            - name: Lint
+              run: npm run lint --if-present
+
+            - name: Test
+              env:
+                  CI: true
+              run: npm test --if-present -- --ci
+
+            - name: Build Next.js
+              env:
+                  NEXT_TELEMETRY_DISABLED: 1
+              run: npm run build
+
+            - name: Upload web build
+              if: success()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: web-build
+                  path: |
+                      frontend/.next/**
+                      frontend/next.config.*
+                  if-no-files-found: ignore
+
+    frontend-desktop:
+        name: Frontend Desktop (Tauri)
+        runs-on: windows-latest
+        defaults:
+            run:
+                working-directory: frontend
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Set up Node
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: "npm"
+                  cache-dependency-path: frontend/package-lock.json
+
+            - name: Set up Rust
+              uses: dtolnay/rust-toolchain@stable
+
+            - name: Cache Rust
+              uses: Swatinem/rust-cache@v2
+              with:
+                  workspaces: |
+                      frontend/src-tauri
+
+            - name: Install NSIS (Windows bundler)
+              run: choco install nsis -y
+
+            - name: Install deps
+              run: npm ci
+
+            - name: Lint (JS/TS)
+              run: npm run lint --if-present
+
+            - name: Lint (Rust)
+              working-directory: frontend/src-tauri
+              run: |
+                  rustup component add clippy
+                  cargo clippy --all-targets --all-features -- -D warnings
+
+            - name: Test (Rust)
+              working-directory: frontend/src-tauri
+              run: cargo test --all-features
+
+            - name: Build web (for Tauri packaging)
+              env:
+                  NEXT_TELEMETRY_DISABLED: 1
+              run: npm run build
+
+            - name: Build Tauri app
+              env:
+                  CI: true
+              run: npm run tauri build
+
+            - name: Upload desktop bundles
+              if: success()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: desktop-bundles
+                  path: frontend/src-tauri/target/release/bundle/**
+                  if-no-files-found: ignore
