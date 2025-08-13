@@ -2,6 +2,8 @@
 
 import Image from "next/image";
 import { useState, useEffect } from "react";
+import { useTauriListeners } from "@/hooks/useTauriListeners";
+import { listen } from "@tauri-apps/api/event";
 
 // Function to check if we're running in Tauri
 const isTauri = () => {
@@ -38,6 +40,23 @@ export default function Home() {
 
     checkBackend();
   }, []);
+
+  useTauriListeners("take_screenshot", (event) => {
+    console.log("Screenshot event received:", event);
+  });
+
+  // useEffect(() => {
+  //   let unlisten: (() => void) | undefined;
+  //   (async () => {
+  //     unlisten = await listen("take_screenshot", (event) => {
+  //       console.log("Screenshot event received:", event);
+  //     });
+  //   })();
+  //   return () => {
+  //     if (unlisten) unlisten();
+  //   };
+  // }, []);
+
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">

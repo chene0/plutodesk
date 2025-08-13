@@ -1,3 +1,5 @@
+use tauri::{AppHandle, Emitter};
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -32,7 +34,7 @@ pub fn run() {
                                 match event.state() {
                                     ShortcutState::Pressed => {
                                         println!("Screenshot Shortcut Pressed!");
-                                        // Here you can add the logic to take a screenshot
+                                        take_screenshot(_app);
                                     }
                                     ShortcutState::Released => {
                                         println!("Screenshot Shortcut Released!");
@@ -52,4 +54,9 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[tauri::command]
+fn take_screenshot(app: &AppHandle) {
+    app.emit("take_screenshot", {}).unwrap();
 }
