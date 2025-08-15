@@ -1,9 +1,10 @@
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Manager};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_http::init())
+        .invoke_handler(tauri::generate_handler![close_screenshot_overlay])
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -31,13 +32,18 @@ pub fn run() {
                             if shortcut == &screenshot_shortcut_ctrl
                                 || shortcut == &screenshot_shortcut_cmd
                             {
+                                let app_handle = _app.clone();
                                 match event.state() {
                                     ShortcutState::Pressed => {
-                                        println!("Screenshot Shortcut Pressed!");
-                                        take_screenshot(_app);
+                                        tauri::async_runtime::spawn(async move {
+                                            println!("Screenshot Shortcut Pressed!");
+                                            take_screenshot(app_handle).await.ok();
+                                        });
                                     }
                                     ShortcutState::Released => {
-                                        println!("Screenshot Shortcut Released!");
+                                        tauri::async_runtime::spawn(async move {
+                                            println!("Screenshot Shortcut Released!");
+                                        });
                                     }
                                 }
                             }
@@ -56,7 +62,29 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
+async fn take_screenshot(app: AppHandle) -> Result<(), tauri::Error> {
+    // app.emit("take_screenshot", {}).unwrap();
+    let _webview_window = tauri::WebviewWindowBuilder::new(
+        &app,
+        "screenshot_overlay",
+        tauri::WebviewUrl::App("tauri/overlay/screenshot".into()),
+    )
+    .transparent(true)
+    .decorations(false)
+    .always_on_top(true)
+    .fullscreen(true)
+    .skip_taskbar(true)
+    .build()
+    .unwrap();
+
+    Ok(())
+}
+
 #[tauri::command]
-fn take_screenshot(app: &AppHandle) {
-    app.emit("take_screenshot", {}).unwrap();
+fn close_screenshot_overlay(app: AppHandle) -> Result<(), tauri::Error> {
+    if let Some(window) = app.get_webview_window("screenshot_overlay") {
+        window.close().unwrap();
+    }
+
+    Ok(())
 }
