@@ -1,0 +1,12 @@
+{
+    "identifier": "overlay",
+    "description": "Event access for overlay window",
+    "platforms": ["linux", "macOS", "windows"],
+    "windows": ["screenshot_overlay"],
+    "permissions": [
+        "core:event:allow-listen",
+        "core:event:allow-emit",
+        "core:window:allow-show"
+    ],
+    "urls": ["local"]
+}

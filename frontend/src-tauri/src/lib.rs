@@ -1,4 +1,6 @@
-use tauri::{AppHandle, Manager};
+mod screenshot;
+
+use screenshot::{close_screenshot_overlay, take_screenshot};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -60,31 +62,4 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
-}
-
-async fn take_screenshot(app: AppHandle) -> Result<(), tauri::Error> {
-    // app.emit("take_screenshot", {}).unwrap();
-    let _webview_window = tauri::WebviewWindowBuilder::new(
-        &app,
-        "screenshot_overlay",
-        tauri::WebviewUrl::App("tauri/overlay/screenshot".into()),
-    )
-    .transparent(true)
-    .decorations(false)
-    .always_on_top(true)
-    .fullscreen(true)
-    .skip_taskbar(true)
-    .build()
-    .unwrap();
-
-    Ok(())
-}
-
-#[tauri::command]
-fn close_screenshot_overlay(app: AppHandle) -> Result<(), tauri::Error> {
-    if let Some(window) = app.get_webview_window("screenshot_overlay") {
-        window.close().unwrap();
-    }
-
-    Ok(())
 }

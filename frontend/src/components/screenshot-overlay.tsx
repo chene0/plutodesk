@@ -4,6 +4,8 @@ import type React from "react"
 
 import { useState, useRef, useCallback, useEffect } from "react"
 import { X, Copy, Download, Crop } from "lucide-react"
+import { useTauriListeners } from "@/hooks/useTauriListeners"
+import { Window } from "@tauri-apps/api/window";
 
 interface SelectionArea {
     startX: number
@@ -16,11 +18,31 @@ interface ScreenshotOverlayProps {
     onClose: () => void
 }
 
+const appWindow = new Window('screenshot_overlay');
+
 export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+
     const [isSelecting, setIsSelecting] = useState(false)
     const [selection, setSelection] = useState<SelectionArea | null>(null)
     const [showToolbar, setShowToolbar] = useState(false)
     const overlayRef = useRef<HTMLDivElement>(null)
+
+    useTauriListeners("open_screenshot_overlay", (event: any) => {
+        const base64 = event.payload;
+        const img = new window.Image();
+        img.src = `data:image/png;base64,${base64}`;
+        img.onload = async () => {
+            const canvas = canvasRef.current;
+            if (canvas) {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext("2d");
+                ctx?.drawImage(img, 0, 0);
+                await appWindow.show();
+            }
+        };
+    });
 
     const handleMouseDown = useCallback((e: React.MouseEvent) => {
         if (e.target !== overlayRef.current) return
@@ -130,6 +152,13 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
         >
+            {/* Canvas background */}
+            <canvas
+                ref={canvasRef}
+                className="absolute top-0 left-0 w-full h-full z-0"
+                style={{ pointerEvents: "none" }}
+            />
+
             {/* Close button */}
             <button
                 onClick={onClose}
