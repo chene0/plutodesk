@@ -25,7 +25,6 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
 
     const [isSelecting, setIsSelecting] = useState(false)
     const [selection, setSelection] = useState<SelectionArea | null>(null)
-    const [showToolbar, setShowToolbar] = useState(false)
     const overlayRef = useRef<HTMLDivElement>(null)
 
     useTauriListeners("open_screenshot_overlay", (event: any) => {
@@ -58,7 +57,6 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
             endX: startX,
             endY: startY,
         })
-        setShowToolbar(false)
     }, [])
 
     const handleMouseMove = useCallback(
@@ -85,12 +83,8 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
     const handleMouseUp = useCallback(() => {
         if (isSelecting && selection) {
             setIsSelecting(false)
-            // Only show toolbar if there's a meaningful selection
-            const width = Math.abs(selection.endX - selection.startX)
-            const height = Math.abs(selection.endY - selection.startY)
-            if (width > 10 && height > 10) {
-                setShowToolbar(true)
-            }
+            const croppedDataUrl = cropSelection();
+            console.log(croppedDataUrl);
         }
     }, [isSelecting, selection])
 
@@ -124,23 +118,44 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
         }
     }
 
-    const getToolbarPosition = () => {
-        if (!selection) return {}
-
-        const left = Math.min(selection.startX, selection.endX)
-        const top = Math.min(selection.startY, selection.endY)
-        const width = Math.abs(selection.endX - selection.startX)
-        const height = Math.abs(selection.endY - selection.startY)
-
-        // Position toolbar below the selection, or above if near bottom
-        const toolbarTop = top + height + 10
-        const toolbarLeft = left + width / 2
+    function getScaledSelection(canvas: HTMLCanvasElement, selection: SelectionArea) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
 
         return {
-            left: `${toolbarLeft}px`,
-            top: `${toolbarTop}px`,
-            transform: "translateX(-50%)",
-        }
+            x: Math.min(selection.startX, selection.endX) * scaleX,
+            y: Math.min(selection.startY, selection.endY) * scaleY,
+            width: Math.abs(selection.endX - selection.startX) * scaleX,
+            height: Math.abs(selection.endY - selection.startY) * scaleY,
+        };
+    }
+
+    function cropSelection() {
+        if (!canvasRef.current || !selection) return;
+
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        // Apply scaling to selection
+        const { x, y, width, height } = getScaledSelection(canvas, selection);
+
+        // Get image data
+        const imageData = ctx.getImageData(x, y, width, height);
+
+        // Create new canvas for cropped image
+        const cropCanvas = document.createElement("canvas");
+        cropCanvas.width = width;
+        cropCanvas.height = height;
+        const cropCtx = cropCanvas.getContext("2d");
+        if (!cropCtx) return;
+
+        cropCtx.putImageData(imageData, 0, 0);
+
+        // Export cropped image as base64 PNG
+        const croppedDataUrl = cropCanvas.toDataURL("image/png");
+        return croppedDataUrl;
     }
 
     return (
@@ -168,7 +183,7 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
             </button>
 
             {/* Instructions */}
-            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-60 bg-white/90 text-gray-800 px-4 py-2 rounded-lg shadow-lg">
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-60 bg-white/90 text-gray-800 px-4 py-2 rounded-lg shadow-lg select-none">
                 <p className="text-sm font-medium">Click and drag to select an area • Press ESC to cancel</p>
             </div>
 
@@ -212,31 +227,6 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
                         </div>
                     )}
                 </>
-            )}
-
-            {/* Action toolbar */}
-            {showToolbar && selection && (
-                <div
-                    className="absolute z-60 bg-white rounded-lg shadow-lg border p-2 flex items-center gap-2"
-                    style={getToolbarPosition()}
-                >
-                    <button className="flex items-center gap-2 px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm font-medium">
-                        <Crop size={16} />
-                        Capture
-                    </button>
-                    <button className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors text-sm">
-                        <Copy size={16} />
-                        Copy
-                    </button>
-                    <button className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors text-sm">
-                        <Download size={16} />
-                        Save
-                    </button>
-                    <div className="w-px h-6 bg-gray-300" />
-                    <button onClick={onClose} className="p-2 text-gray-500 hover:text-gray-700 transition-colors">
-                        <X size={16} />
-                    </button>
-                </div>
             )}
         </div>
     )
