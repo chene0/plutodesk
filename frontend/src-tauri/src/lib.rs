@@ -5,6 +5,7 @@ use screenshot::{close_screenshot_overlay, take_screenshot};
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_sql::Builder::new().build())
         .plugin(tauri_plugin_http::init())
         .invoke_handler(tauri::generate_handler![close_screenshot_overlay])
         .setup(|app| {
