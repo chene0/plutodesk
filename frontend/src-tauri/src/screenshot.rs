@@ -31,14 +31,19 @@ fn screenshot_to_base64() -> Result<String, Box<dyn std::error::Error>> {
 }
 
 pub async fn take_screenshot(app: AppHandle) -> Result<(), tauri::Error> {
+    if app.get_webview_window("screenshot_overlay").is_some() {
+        log::warn!("Screenshot overlay already open, ignoring shortcut.");
+        return Ok(());
+    }
+
     let snapshot_base64_str = screenshot_to_base64().unwrap();
 
     let app_clone = app.clone();
     let payload = snapshot_base64_str.clone();
 
-    println!("Waiting for screenshot_overlay_ready event...");
+    log::info!("Waiting for screenshot_overlay_ready event...");
     let _cb_id = app.listen_any("screenshot_overlay_ready", move |event| {
-        println!("screenshot_overlay_ready event received: {:?}", event);
+        log::info!("screenshot_overlay_ready event received: {:?}", event);
         let _ = app_clone.emit_to(
             "screenshot_overlay",
             "open_screenshot_overlay",

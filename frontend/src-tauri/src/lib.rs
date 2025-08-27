@@ -31,7 +31,7 @@ pub fn run() {
                 app.handle().plugin(
                     tauri_plugin_global_shortcut::Builder::new()
                         .with_handler(move |_app, shortcut, event| {
-                            println!("{:?}", shortcut);
+                            log::info!("{:?}", shortcut);
                             if shortcut == &screenshot_shortcut_ctrl
                                 || shortcut == &screenshot_shortcut_cmd
                             {
@@ -39,13 +39,13 @@ pub fn run() {
                                 match event.state() {
                                     ShortcutState::Pressed => {
                                         tauri::async_runtime::spawn(async move {
-                                            println!("Screenshot Shortcut Pressed!");
+                                            log::info!("Screenshot Shortcut Pressed!");
                                             take_screenshot(app_handle).await.ok();
                                         });
                                     }
                                     ShortcutState::Released => {
                                         tauri::async_runtime::spawn(async move {
-                                            println!("Screenshot Shortcut Released!");
+                                            log::info!("Screenshot Shortcut Released!");
                                         });
                                     }
                                 }
@@ -57,7 +57,7 @@ pub fn run() {
                 app.global_shortcut().register(screenshot_shortcut_ctrl)?;
             }
 
-            println!("Tauri application is running");
+            log::info!("Tauri application is running");
 
             Ok(())
         })
