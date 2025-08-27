@@ -1,7 +1,7 @@
 use base64::{engine::general_purpose, Engine as _};
 use device_query::{DeviceQuery, DeviceState, MouseState};
 use image::{ExtendedColorType, ImageBuffer, ImageEncoder, Rgba};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter, Listener, Manager};
 use xcap::Monitor;
 
 // Capture screenshot and convert to base64 PNG
@@ -31,8 +31,24 @@ fn screenshot_to_base64() -> Result<String, Box<dyn std::error::Error>> {
 }
 
 pub async fn take_screenshot(app: AppHandle) -> Result<(), tauri::Error> {
-    // app.emit("take_screenshot", {}).unwrap();
-    let webview_window = tauri::WebviewWindowBuilder::new(
+    let snapshot_base64_str = screenshot_to_base64().unwrap();
+
+    let app_clone = app.clone();
+    let payload = snapshot_base64_str.clone();
+
+    println!("Waiting for screenshot_overlay_ready event...");
+    let _cb_id = app.listen_any("screenshot_overlay_ready", move |event| {
+        println!("screenshot_overlay_ready event received: {:?}", event);
+        let _ = app_clone.emit_to(
+            "screenshot_overlay",
+            "open_screenshot_overlay",
+            payload.clone(),
+        );
+
+        app_clone.unlisten(event.id());
+    });
+
+    let _webview_window = tauri::WebviewWindowBuilder::new(
         &app,
         "screenshot_overlay",
         tauri::WebviewUrl::App("tauri/overlay/screenshot".into()),
@@ -45,11 +61,6 @@ pub async fn take_screenshot(app: AppHandle) -> Result<(), tauri::Error> {
     .visible(false) // <-- Give time for frontend to process snapshot payload
     .build()
     .unwrap();
-
-    let snapshot_base64_str = screenshot_to_base64().unwrap();
-    webview_window
-        .emit("open_screenshot_overlay", snapshot_base64_str)
-        .unwrap();
 
     Ok(())
 }

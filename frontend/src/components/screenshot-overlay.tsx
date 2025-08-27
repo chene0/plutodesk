@@ -6,6 +6,7 @@ import { useState, useRef, useCallback, useEffect } from "react"
 import { X, Copy, Download, Crop } from "lucide-react"
 import { useTauriListeners } from "@/hooks/useTauriListeners"
 import { Window } from "@tauri-apps/api/window";
+import { emit } from "@tauri-apps/api/event"
 
 interface SelectionArea {
     startX: number
@@ -26,6 +27,10 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
     const [isSelecting, setIsSelecting] = useState(false)
     const [selection, setSelection] = useState<SelectionArea | null>(null)
     const overlayRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        emit("screenshot_overlay_ready", { label: "screenshot_overlay" });
+    }, []);
 
     useTauriListeners("open_screenshot_overlay", (event: any) => {
         const base64 = event.payload;
