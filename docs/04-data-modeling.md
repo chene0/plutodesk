@@ -82,15 +82,12 @@ erDiagram
         text description
         string image_path
         string s3_image_key
-        integer difficulty_rating
         integer confidence_level
-        integer time_spent_seconds
         text notes
         timestamp created_at
         timestamp updated_at
         timestamp last_attempted
         integer attempt_count
-        float average_time
         float success_rate
         boolean is_synced
         timestamp last_modified

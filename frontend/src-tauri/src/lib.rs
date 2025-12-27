@@ -1,13 +1,49 @@
+mod commands;
+mod db;
 mod screenshot;
 
+use commands::*;
+use db::init_sqlite;
 use screenshot::{close_screenshot_overlay, take_screenshot};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_sql::Builder::new().build())
         .plugin(tauri_plugin_http::init())
-        .invoke_handler(tauri::generate_handler![close_screenshot_overlay])
+        .invoke_handler(tauri::generate_handler![
+            close_screenshot_overlay,
+            // Folder commands
+            create_folder,
+            get_folder,
+            get_folders_by_user,
+            update_folder,
+            delete_folder,
+            // Course commands
+            create_course,
+            get_course,
+            get_courses_by_folder,
+            update_course,
+            delete_course,
+            // Subject commands
+            create_subject,
+            get_subject,
+            get_subjects_by_course,
+            update_subject,
+            delete_subject,
+            // Problem commands
+            create_problem,
+            get_problem,
+            get_problems_by_subject,
+            update_problem,
+            update_problem_stats,
+            delete_problem,
+            // Problem attempt commands
+            create_problem_attempt,
+            get_problem_attempt,
+            get_attempts_by_problem,
+            update_problem_attempt,
+            delete_problem_attempt,
+        ])
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -22,6 +58,15 @@ pub fn run() {
                 use tauri_plugin_global_shortcut::{
                     Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState,
                 };
+
+                let app_handle = app.handle().clone();
+
+                // Initialize database
+                tauri::async_runtime::spawn(async move {
+                    if let Err(e) = init_sqlite(&app_handle).await {
+                        log::error!("Failed to initialize database: {}", e);
+                    }
+                });
 
                 let screenshot_shortcut_ctrl =
                     Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyS);
