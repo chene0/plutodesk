@@ -6,9 +6,13 @@ export function useTauriListeners(eventName: string, callback: (event: any) => v
         let unlisten: (() => void) | undefined;
 
         (async () => {
-            unlisten = await listen(eventName, (event) => {
-                callback(event);
-            });
+            try {
+                unlisten = await listen(eventName, (event) => {
+                    callback(event);
+                });
+            } catch (error) {
+                console.error(`Failed to register listener for event "${eventName}":`, error);
+            }
         })();
 
         return () => {

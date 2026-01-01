@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub struct ScreenshotDto {
     pub folder_name: String,
     pub course_name: String,

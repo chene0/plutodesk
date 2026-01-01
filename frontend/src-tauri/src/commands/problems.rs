@@ -126,3 +126,50 @@ pub async fn delete_problem(db: State<'_, Db>, id: String) -> Result<String, Str
 
     Ok("Problem deleted successfully".to_string())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_uuid_parsing_validation() {
+        // Test valid UUID
+        let valid_uuid = "550e8400-e29b-41d4-a716-446655440000";
+        assert!(Uuid::parse_str(valid_uuid).is_ok());
+
+        // Test invalid UUID formats
+        assert!(Uuid::parse_str("not-a-uuid").is_err());
+        assert!(Uuid::parse_str("").is_err());
+        assert!(Uuid::parse_str("550e8400-e29b-41d4-a716").is_err());
+    }
+
+    #[test]
+    fn test_create_problem_request_validation() {
+        let request = CreateProblemRequest {
+            subject_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
+            title: "Test Problem".to_string(),
+            description: Some("Test Description".to_string()),
+            image_path: None,
+            s3_image_key: None,
+        };
+
+        // Should parse UUID successfully
+        assert!(Uuid::parse_str(&request.subject_id).is_ok());
+    }
+
+    #[test]
+    fn test_update_problem_request_validation() {
+        let request = UpdateProblemRequest {
+            id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
+            title: Some("Updated Title".to_string()),
+            description: Some(Some("Updated Description".to_string())),
+            image_path: None,
+            s3_image_key: None,
+            confidence_level: Some(5),
+            notes: Some(Some("Some notes".to_string())),
+        };
+
+        // Should parse UUID successfully
+        assert!(Uuid::parse_str(&request.id).is_ok());
+    }
+}
