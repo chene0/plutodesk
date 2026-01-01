@@ -30,6 +30,7 @@ fn screenshot_to_base64() -> Result<String, Box<dyn std::error::Error>> {
     Ok(base64_str)
 }
 
+// Initiate screenshot overlay interface
 pub async fn take_screenshot(app: AppHandle) -> Result<(), tauri::Error> {
     if app.get_webview_window("screenshot_overlay").is_some() {
         log::warn!("Screenshot overlay already open, ignoring shortcut.");
@@ -67,6 +68,12 @@ pub async fn take_screenshot(app: AppHandle) -> Result<(), tauri::Error> {
     .build()
     .unwrap();
 
+    Ok(())
+}
+
+#[tauri::command]
+pub fn receive_screenshot_data(image_url: String) -> Result<(), tauri::Error> {
+    println!("Frontend sent image url {}", image_url);
     Ok(())
 }
 

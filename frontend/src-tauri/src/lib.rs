@@ -4,7 +4,7 @@ mod screenshot;
 
 use commands::*;
 use db::init_sqlite;
-use screenshot::{close_screenshot_overlay, take_screenshot};
+use screenshot::{close_screenshot_overlay, receive_screenshot_data, take_screenshot};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -12,6 +12,7 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .invoke_handler(tauri::generate_handler![
             close_screenshot_overlay,
+            receive_screenshot_data,
             // Folder commands
             create_folder,
             get_folder,
