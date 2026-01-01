@@ -4,3 +4,7 @@
 /.DS_Store
 /.classpath
 /personal
+
+# Environment variables
+.env*
+!.env.example
