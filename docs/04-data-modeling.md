@@ -1,6 +1,7 @@
 # 4. Data Modeling
 
 ## Entities & Relationships
+
 - **Users**: Account information and subscription status
 - **Folders**: Top-level organization (e.g., "Fall 2024", "Personal Study")
 - **Courses**: Subject areas within folders (e.g., "Calculus I", "Physics 101")
@@ -10,6 +11,7 @@
 - **Subscriptions**: Premium subscription management via Stripe
 
 ## ER Diagram
+
 ```mermaid
 erDiagram
     USER ||--o{ FOLDER : owns

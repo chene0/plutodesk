@@ -1,5 +1,6 @@
 mod commands;
 mod db;
+mod dtos;
 mod screenshot;
 
 use commands::*;

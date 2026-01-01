@@ -1,4 +1,9 @@
-use base64::{engine::general_purpose, Engine as _};
+use sanitize_filename::sanitize;
+use std::fs;
+use std::path::PathBuf;
+
+use crate::dtos::screenshot::ScreenshotDto;
+use base64::{engine::general_purpose, prelude::*, Engine as _};
 use device_query::{DeviceQuery, DeviceState, MouseState};
 use image::{ExtendedColorType, ImageBuffer, ImageEncoder, Rgba};
 use tauri::{AppHandle, Emitter, Listener, Manager};
@@ -71,9 +76,68 @@ pub async fn take_screenshot(app: AppHandle) -> Result<(), tauri::Error> {
     Ok(())
 }
 
+// Helper to sanitize and clean spaces
+fn clean_name(name: &str) -> String {
+    sanitize(name).replace(" ", "_")
+}
+
+fn write_image_data_url_to_local_fs(
+    app: AppHandle,
+    payload: ScreenshotDto,
+) -> Result<String, tauri::Error> {
+    let relative_path = PathBuf::from(clean_name(&payload.folder_name))
+        .join(clean_name(&payload.course_name))
+        .join(clean_name(&payload.subject_name));
+
+    let app_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())
+        .unwrap();
+    let full_dir_path = app_dir.join(&relative_path);
+
+    // Create full directory
+    fs::create_dir_all(&full_dir_path).map_err(|e| e.to_string());
+
+    // Decode image url
+    // Remove header if present (data:image/png;base64, ....)
+    let b64_string = payload
+        .base64_data
+        .split(',')
+        .next_back()
+        .unwrap_or(&payload.base64_data);
+    let image_bytes = BASE64_STANDARD
+        .decode(b64_string)
+        .map_err(|e| e.to_string())
+        .unwrap();
+
+    // Write the file
+    let mut file_path = full_dir_path.join(&payload.problem_name);
+    file_path.set_extension("png");
+    fs::write(&file_path, image_bytes).map_err(|e| e.to_string());
+    println!("Writing to {}", file_path.to_string_lossy().to_string());
+
+    // Return relative path for db storage
+    let db_path = relative_path.join(&payload.problem_name);
+
+    Ok(db_path.to_string_lossy().to_string())
+}
+
 #[tauri::command]
-pub fn receive_screenshot_data(image_url: String) -> Result<(), tauri::Error> {
-    println!("Frontend sent image url {}", image_url);
+pub fn receive_screenshot_data(app: AppHandle, image_url: String) -> Result<(), tauri::Error> {
+    // Passed struct has placeholder data for now,
+    // In the future, these will be determined by a
+    write_image_data_url_to_local_fs(
+        app,
+        ScreenshotDto {
+            folder_name: "Computer Science".to_string(),
+            course_name: "Data Structures & Algorithms".to_string(),
+            subject_name: "Binary Trees".to_string(),
+            problem_name: "Lowest Common Ancestor".to_string(),
+            base64_data: image_url,
+        },
+    )?;
+
     Ok(())
 }
 

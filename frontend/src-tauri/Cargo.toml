@@ -37,6 +37,7 @@ sea-orm = { version = "1.1.0", features = [
 migration = { path = "migration" }
 uuid = { version = "1.11", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
+sanitize-filename = "0.6.0"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-global-shortcut = "2"
