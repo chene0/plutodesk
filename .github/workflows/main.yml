@@ -14,7 +14,7 @@ permissions:
   pull-requests: read
 
 env:
-  NODE_VERSION: "20"
+  NODE_VERSION: "24"
   JAVA_VERSION: "21"
 
 jobs:

@@ -11,7 +11,7 @@ A desktop application built with Next.js frontend, Spring Boot backend, and Taur
 ## Prerequisites
 
 - Java 21+
-- Node.js 18+
+- Node.js 24+
 - Rust (for Tauri)
 
 ## Quick Start
