@@ -3,7 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 
 export function useTauriListeners(eventName: string, callback: (event: any) => void) {
     const callbackRef = useRef(callback);
-    
+
     // Keep callback ref in sync with latest callback
     useEffect(() => {
         callbackRef.current = callback;

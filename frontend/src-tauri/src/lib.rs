@@ -5,7 +5,10 @@ mod screenshot;
 
 use commands::*;
 use db::init_sqlite;
-use screenshot::{close_screenshot_overlay, receive_screenshot_data, take_screenshot};
+use screenshot::{
+    close_screenshot_overlay, get_screenshot_data, receive_screenshot_data, take_screenshot,
+};
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -13,6 +16,7 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .invoke_handler(tauri::generate_handler![
             close_screenshot_overlay,
+            get_screenshot_data,
             receive_screenshot_data,
             // Folder commands
             create_folder,
@@ -47,13 +51,19 @@ pub fn run() {
             delete_problem_attempt,
         ])
         .setup(|app| {
-            if cfg!(debug_assertions) {
-                app.handle().plugin(
-                    tauri_plugin_log::Builder::default()
-                        .level(log::LevelFilter::Info)
-                        .build(),
-                )?;
-            }
+            // Enable logging in both debug and release builds
+            // Default behavior: logs to stdout in debug, log directory in release
+            app.handle().plugin(
+                tauri_plugin_log::Builder::default()
+                    .level(log::LevelFilter::Info)
+                    .build(),
+            )?;
+
+            // Initialize screenshot data storage
+            use screenshot::ScreenshotData;
+            use std::sync::{Arc, Mutex};
+            let app_handle = app.handle().clone();
+            app_handle.manage::<ScreenshotData>(Arc::new(Mutex::new(None::<String>)));
 
             #[cfg(desktop)]
             {

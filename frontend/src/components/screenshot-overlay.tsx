@@ -30,44 +30,65 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    console.log("[screenshot-overlay] emit ready");
-    emit("screenshot_overlay_ready", { label: "screenshot_overlay" });
+    emit("screenshot_overlay_ready", { label: "screenshot_overlay" })
+      .catch((err) => {
+        console.error("[screenshot-overlay] Failed to emit ready event", err);
+      });
+  }, []);
+
+  // Helper function to process screenshot data (used by both command and event)
+  const handleScreenshotData = useCallback(async (base64: string) => {
+    try {
+      // Convert base64 to blob to avoid data URL size limits
+      const byteCharacters = atob(base64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'image/png' });
+
+      // Create image bitmap from blob
+      const imageBitmap = await createImageBitmap(blob);
+
+      const canvas = canvasRef.current;
+
+      if (canvas) {
+        canvas.width = imageBitmap.width;
+        canvas.height = imageBitmap.height;
+
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(imageBitmap, 0, 0);
+          await appWindow.show();
+        } else {
+          console.warn("[screenshot-overlay] Canvas context is null");
+        }
+      } else {
+        console.warn("[screenshot-overlay] canvasRef is null");
+      }
+    } catch (error) {
+      console.error("[screenshot-overlay] Error processing screenshot", error);
+    }
   }, []);
 
   const handleScreenshotEvent = useCallback((event: any) => {
-    console.log("[screenshot-overlay] received open_screenshot_overlay event", {
-      id: event?.id,
-      payloadLength: event?.payload?.length ?? 0,
-    });
+    // Handle different payload structures
+    let base64: string;
+    if (typeof event?.payload === 'string') {
+      base64 = event.payload;
+    } else if (event?.payload?.payload) {
+      base64 = event.payload.payload;
+    } else if (event?.payload?.data) {
+      base64 = event.payload.data;
+    } else {
+      console.error("[screenshot-overlay] Invalid payload structure", event);
+      return;
+    }
 
-    const base64 = event.payload;
-    const img = new window.Image();
-    img.src = `data:image/png;base64,${base64}`;
-    img.onload = async () => {
-      console.log("[screenshot-overlay] image loaded", {
-        width: img.width,
-        height: img.height,
-      });
-      const canvas = canvasRef.current;
-      if (canvas) {
-        canvas.width = img.width;
-        canvas.height = img.height;
-        console.log("[screenshot-overlay] canvas resized", {
-          canvasWidth: canvas.width,
-          canvasHeight: canvas.height,
-        });
-        const ctx = canvas.getContext("2d");
-        ctx?.drawImage(img, 0, 0);
-        console.log("[screenshot-overlay] image drawn to canvas");
-        await appWindow.show();
-        console.log("[screenshot-overlay] requested window show");
-      } else {
-        console.warn(
-          "[screenshot-overlay] canvasRef is null when image loaded",
-        );
-      }
-    };
-  }, []);
+    // Call the new handleScreenshotData function
+    handleScreenshotData(base64);
+  }, [handleScreenshotData]);
 
   useTauriListeners("open_screenshot_overlay", handleScreenshotEvent);
 
@@ -80,7 +101,6 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
     // capture the pointer so we keep receiving move/up events even if the pointer goes over other elements
     try {
       overlayEl.setPointerCapture(e.pointerId);
-      console.log("[screenshot-overlay] setPointerCapture", e.pointerId);
     } catch (err) {
       console.warn("[screenshot-overlay] setPointerCapture failed", err);
     }
@@ -89,13 +109,6 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
     const startX = e.clientX - rect.left;
     const startY = e.clientY - rect.top;
 
-    console.log("[screenshot-overlay] pointerdown", {
-      pointerId: e.pointerId,
-      clientX: e.clientX,
-      clientY: e.clientY,
-      rect,
-    });
-
     setIsSelecting(true);
     setSelection({
       startX,
@@ -103,7 +116,6 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
       endX: startX,
       endY: startY,
     });
-    console.log("[screenshot-overlay] selection started", { startX, startY });
   }, []);
 
   const handlePointerMove = useCallback(
@@ -114,15 +126,6 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
       const rect = overlayEl.getBoundingClientRect();
       const endX = e.clientX - rect.left;
       const endY = e.clientY - rect.top;
-
-      console.log("[screenshot-overlay] pointermove while selecting", {
-        pointerId: (e as any).pointerId,
-        clientX: e.clientX,
-        clientY: e.clientY,
-        rect,
-        computedEnd: { endX, endY },
-        prevSelection: selection,
-      });
 
       setSelection((prev) =>
         prev
@@ -146,19 +149,12 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
 
-    const result = {
+    return {
       x: Math.min(selection.startX, selection.endX) * scaleX,
       y: Math.min(selection.startY, selection.endY) * scaleY,
       width: Math.abs(selection.endX - selection.startX) * scaleX,
       height: Math.abs(selection.endY - selection.startY) * scaleY,
     };
-    console.log("[screenshot-overlay] getScaledSelection", {
-      rect,
-      scaleX,
-      scaleY,
-      result,
-    });
-    return result;
   }
 
   // Define cropSelection before handlePointerUp so it can be referenced
@@ -169,22 +165,10 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    console.log("[screenshot-overlay] cropSelection start", {
-      selection,
-      canvasWidth: canvas.width,
-      canvasHeight: canvas.height,
-    });
-
     // Apply scaling to selection
     const { x, y, width, height } = getScaledSelection(canvas, selection);
 
     // Get image data
-    console.log("[screenshot-overlay] getImageData params", {
-      x,
-      y,
-      width,
-      height,
-    });
     if (width < 1 || height < 1) {
       console.warn("[screenshot-overlay] Invalid selection area");
       setSelection(null);
@@ -203,10 +187,6 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
 
     // Export cropped image as base64 PNG
     const croppedDataUrl = cropCanvas.toDataURL("image/png");
-    console.log("[screenshot-overlay] cropSelection done", {
-      croppedDataUrl: croppedDataUrl,
-      croppedDataUrlLength: croppedDataUrl.length,
-    });
     return croppedDataUrl;
   }, [selection]);
 
@@ -218,26 +198,13 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
       // release pointer capture
       try {
         overlayEl.releasePointerCapture((e as any).pointerId);
-        console.log(
-          "[screenshot-overlay] releasePointerCapture",
-          (e as any).pointerId,
-        );
       } catch (err) {
         console.warn("[screenshot-overlay] releasePointerCapture failed", err);
       }
 
-      console.log("[screenshot-overlay] pointerup", {
-        isSelecting,
-        selection,
-        pointerId: (e as any).pointerId,
-      });
       if (isSelecting && selection) {
         setIsSelecting(false);
         const croppedDataUrl = cropSelection();
-        console.log(
-          "[screenshot-overlay] cropSelection result length",
-          croppedDataUrl?.length ?? 0,
-        );
         // Auto exit with save, potentially could add setting later to customize when to save
         // Call save
         invoke("receive_screenshot_data", {
@@ -250,9 +217,7 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      console.log("[screenshot-overlay] keydown", e.key);
       if (e.key === "Escape") {
-        console.log("[screenshot-overlay] escape pressed -> closing overlay");
         setIsSelecting(false);
         setSelection(null);
         onClose();
@@ -262,18 +227,11 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
   );
 
   useEffect(() => {
-    console.log("[screenshot-overlay] adding keydown listener");
     document.addEventListener("keydown", handleKeyDown);
     return () => {
-      console.log("[screenshot-overlay] removing keydown listener");
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [handleKeyDown]);
-
-  // log selection changes to trace freezes
-  useEffect(() => {
-    console.log("[screenshot-overlay] selection changed", selection);
-  }, [selection]);
 
   const getSelectionStyle = () => {
     if (!selection) return {};
@@ -303,8 +261,8 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
       {/* Canvas background */}
       <canvas
         ref={canvasRef}
-        className="absolute top-0 left-0 w-full h-full z-0"
-        style={{ pointerEvents: "none" }}
+        className="absolute top-0 left-0 z-0"
+        style={{ pointerEvents: "none", width: "100%", height: "100%" }}
       />
 
       {/* Close button */}
