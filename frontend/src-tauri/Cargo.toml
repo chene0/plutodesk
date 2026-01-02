@@ -24,3 +24,26 @@ log = "0.4"
 tauri = { version = "2.5.0", features = [] }
 tauri-plugin-log = "2.0.0-rc"
 tauri-plugin-http = "2.0.0-rc"
+xcap = "=0.6.2"
+image = "0.25.6"
+base64 = "0.22.1"
+device_query = "=4.0.1"
+env_logger = "0.11.8"
+sea-orm = { version = "1.1.0", features = [
+    "sqlx-sqlite",
+    "runtime-tokio-rustls",
+    "macros",
+] }
+migration = { path = "migration" }
+uuid = { version = "1.11", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+sanitize-filename = "0.6.0"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-global-shortcut = "2"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+mockall = "0.13"
+tempfile = "3.10"
+assert_matches = "1.5"

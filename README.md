@@ -11,7 +11,7 @@ A desktop application built with Next.js frontend, Spring Boot backend, and Taur
 ## Prerequisites
 
 - Java 21+
-- Node.js 18+
+- Node.js 24+
 - Rust (for Tauri)
 
 ## Quick Start
@@ -85,9 +85,120 @@ cd frontend && npm run build
 cd frontend && npm run tauri:build
 ```
 
+## Testing
+
+### Unit Tests
+
+#### Frontend Unit Tests
+```bash
+cd frontend && npm test
+```
+
+#### Backend Unit Tests
+```bash
+cd backend && ./gradlew test
+```
+
+#### Rust/Tauri Unit Tests
+```bash
+cd frontend/src-tauri && cargo test --lib
+```
+
+### End-to-End (E2E) Tests
+
+E2E tests are located in the `e2e/` directory at the project root and use Playwright with Tauri support.
+
+#### Prerequisites for E2E Testing
+- All dependencies installed (see Prerequisites above)
+- Frontend dependencies: `cd frontend && npm install`
+- E2E dependencies: `cd e2e && npm install`
+
+#### Running E2E Tests
+
+1. **Install E2E dependencies** (first time only):
+   ```bash
+   cd e2e && npm install
+   ```
+
+2. **Run all E2E tests**:
+   ```bash
+   cd e2e && npm test
+   ```
+   This will automatically launch the Tauri app and run the tests.
+
+3. **Run E2E tests with UI mode** (interactive):
+   ```bash
+   cd e2e && npm run test:ui
+   ```
+
+4. **Run E2E tests in debug mode**:
+   ```bash
+   cd e2e && npm run test:debug
+   ```
+
+5. **Run E2E tests in headed mode** (see browser):
+   ```bash
+   cd e2e && npm run test:headed
+   ```
+
+#### E2E Test Structure
+- `e2e/tauri/` - Tauri desktop app E2E tests
+- `e2e/api/` - Backend API E2E tests (future)
+- `e2e/full-stack/` - Full stack integration tests (future)
+
+**Note**: Currently, E2E tests contain skeleton test scenarios. Full implementation will be added as features are developed.
+
 ## Technology Stack
 
 - **Backend**: Spring Boot 3.5, Kotlin, H2 Database
 - **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS
 - **Desktop**: Tauri 2.5
 - **Build Tools**: Gradle (backend), npm (frontend)
+
+## Security
+
+### Environment Variables
+
+This project uses environment variables for sensitive configuration. **Never commit `.env` files to version control.**
+
+#### Backend Environment Variables
+
+1. Copy `backend/.env.example` to `backend/.env`
+2. Update the values with your actual configuration:
+   ```env
+   DB_URL=jdbc:h2:mem:testdb
+   DB_USERNAME=sa
+   DB_PASSWORD=your_secure_password_here
+   ```
+
+**Important for Production:**
+- Use strong, unique passwords
+- Use a proper production database (PostgreSQL, MySQL, etc.) instead of H2
+- Disable H2 console in production: set `spring.h2.console.enabled=false` in `application.properties`
+- Never use default credentials (`sa`/`password`) in production
+
+#### Frontend/Tauri Environment Variables
+
+1. Copy `frontend/src-tauri/migration/.env.example` to `frontend/src-tauri/migration/.env`
+2. Update the database path if needed:
+   ```env
+   DATABASE_URL=sqlite://dev.db?mode=rwc
+   ```
+
+### Security Best Practices
+
+1. **Never commit secrets**: All `.env` files are in `.gitignore`. Double-check before committing.
+2. **Use environment variables**: All sensitive configuration should use environment variables, not hardcoded values.
+3. **Review default values**: The codebase contains placeholder/default values for development. Always override these in production.
+4. **Database security**: 
+   - Use strong passwords for database connections
+   - Restrict database access to necessary IPs/networks
+   - Use connection encryption in production
+5. **API security**: 
+   - Implement proper authentication and authorization
+   - Use HTTPS in production
+   - Validate and sanitize all user inputs
+
+### Placeholder Values in Code
+
+The codebase contains placeholder values (e.g., `"test_hash"`, default `"password"`) that are clearly marked for MVP/development purposes. These are **not** production secrets and should be replaced with proper implementations before production deployment.

@@ -1,6 +1,7 @@
 # 4. Data Modeling
 
 ## Entities & Relationships
+
 - **Users**: Account information and subscription status
 - **Folders**: Top-level organization (e.g., "Fall 2024", "Personal Study")
 - **Courses**: Subject areas within folders (e.g., "Calculus I", "Physics 101")
@@ -10,6 +11,7 @@
 - **Subscriptions**: Premium subscription management via Stripe
 
 ## ER Diagram
+
 ```mermaid
 erDiagram
     USER ||--o{ FOLDER : owns
@@ -82,15 +84,12 @@ erDiagram
         text description
         string image_path
         string s3_image_key
-        integer difficulty_rating
         integer confidence_level
-        integer time_spent_seconds
         text notes
         timestamp created_at
         timestamp updated_at
         timestamp last_attempted
         integer attempt_count
-        float average_time
         float success_rate
         boolean is_synced
         timestamp last_modified

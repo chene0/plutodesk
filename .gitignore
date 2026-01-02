@@ -4,3 +4,14 @@
 /.DS_Store
 /.classpath
 /personal
+
+# Environment variables
+.env*
+!.env.example
+
+# E2E Tests (Playwright)
+e2e/node_modules/
+e2e/test-results/
+e2e/playwright-report/
+e2e/.playwright/
+e2e/playwright/.cache/

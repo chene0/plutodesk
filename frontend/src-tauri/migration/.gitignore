@@ -1,0 +1,13 @@
+# Environment files
+.env
+# But keep .env.example (override parent .gitignore if needed)
+!.env.example
+
+# Development database
+dev.db
+dev.db-shm
+dev.db-wal
+
+# Cargo build artifacts
+target/
+Cargo.lock
