@@ -20,8 +20,6 @@ interface ScreenshotOverlayProps {
   onClose: () => void;
 }
 
-const appWindow = new Window("screenshot_overlay");
-
 export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -29,11 +27,37 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
   const [selection, setSelection] = useState<SelectionArea | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
+  // Create Window instance inside component to avoid stale references
+  // Use a ref to ensure we only create it once per component instance
+  const appWindowRef = useRef<Window | null>(null);
+
+  const getAppWindow = useCallback(() => {
+    if (!appWindowRef.current) {
+      try {
+        appWindowRef.current = new Window("screenshot_overlay");
+      } catch (error) {
+        console.error("[screenshot-overlay] Failed to create Window instance:", error);
+        // Return a mock object to prevent crashes
+        return {
+          show: async () => { },
+          close: async () => { },
+          hide: async () => { },
+        } as Window;
+      }
+    }
+    return appWindowRef.current;
+  }, []);
+
   useEffect(() => {
     emit("screenshot_overlay_ready", { label: "screenshot_overlay" })
       .catch((err) => {
         console.error("[screenshot-overlay] Failed to emit ready event", err);
       });
+
+    // Cleanup: clear window reference on unmount
+    return () => {
+      appWindowRef.current = null;
+    };
   }, []);
 
   // Helper function to process screenshot data (used by both command and event)
@@ -60,7 +84,12 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
         const ctx = canvas.getContext("2d");
         if (ctx) {
           ctx.drawImage(imageBitmap, 0, 0);
-          await appWindow.show();
+          try {
+            const appWindow = getAppWindow();
+            await appWindow.show();
+          } catch (error) {
+            console.error("[screenshot-overlay] Failed to show window:", error);
+          }
         } else {
           console.warn("[screenshot-overlay] Canvas context is null");
         }

@@ -51,9 +51,40 @@ pub async fn get_screenshot_data(
 
 // Initiate screenshot overlay interface
 pub async fn take_screenshot(app: AppHandle) -> Result<(), tauri::Error> {
-    if app.get_webview_window("screenshot_overlay").is_some() {
-        log::warn!("Screenshot overlay already open, ignoring shortcut.");
-        return Ok(());
+    // Check if window exists and is actually usable (not just in registry)
+    if let Some(existing_window) = app.get_webview_window("screenshot_overlay") {
+        // Check if window is actually visible/usable
+        match existing_window.is_visible() {
+            Ok(true) => {
+                log::warn!("Screenshot overlay already open and visible, ignoring shortcut.");
+                return Ok(());
+            }
+            Ok(false) => {
+                // Window exists but is hidden - close it to clean up state
+                log::info!("Found hidden screenshot overlay window, closing it before creating new one.");
+                if let Err(e) = existing_window.close() {
+                    log::warn!("Failed to close existing window: {}", e);
+                } else {
+                    // Give it a moment to fully close
+                    let _ = tauri::async_runtime::spawn_blocking(|| {
+                        std::thread::sleep(std::time::Duration::from_millis(100));
+                    })
+                    .await;
+                }
+            }
+            Err(_) => {
+                // Window exists but is in invalid state - try to close it
+                log::warn!("Found screenshot overlay window in invalid state, attempting to close.");
+                if let Err(e) = existing_window.close() {
+                    log::warn!("Failed to close invalid window: {}", e);
+                } else {
+                    let _ = tauri::async_runtime::spawn_blocking(|| {
+                        std::thread::sleep(std::time::Duration::from_millis(100));
+                    })
+                    .await;
+                }
+            }
+        }
     }
 
     log::info!("Taking screenshot...");
@@ -76,57 +107,86 @@ pub async fn take_screenshot(app: AppHandle) -> Result<(), tauri::Error> {
     let app_clone = app.clone();
     let payload = snapshot_base64_str.clone();
 
-    let _cb_id = app.listen_any("screenshot_overlay_ready", move |event| {
-        // Add a delay to ensure the frontend listener is registered
-        // The ready event is emitted immediately on mount, but the listener might not be ready yet
+    // Store listener ID for cleanup
+    let listener_id = app.listen_any("screenshot_overlay_ready", {
         let app_for_emit = app_clone.clone();
         let payload_for_emit = payload.clone();
-        tauri::async_runtime::spawn(async move {
-            // Wait a bit for the frontend to set up the listener
-            let _ = tauri::async_runtime::spawn_blocking(|| {
-                std::thread::sleep(std::time::Duration::from_millis(100));
-            })
-            .await;
+        move |event| {
+            // Clone for unlisten call (needed after async spawn)
+            let app_for_unlisten = app_for_emit.clone();
+            let event_id = event.id();
+            
+            // Add a delay to ensure the frontend listener is registered
+            // The ready event is emitted immediately on mount, but the listener might not be ready yet
+            let app_for_emit_inner = app_for_emit.clone();
+            let payload_for_emit_inner = payload_for_emit.clone();
+            tauri::async_runtime::spawn(async move {
+                // Wait a bit for the frontend to set up the listener
+                let _ = tauri::async_runtime::spawn_blocking(|| {
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                })
+                .await;
 
-            match app_for_emit.emit_to(
-                "screenshot_overlay",
-                "open_screenshot_overlay",
-                payload_for_emit.clone(),
-            ) {
-                Ok(_) => {
-                    // Try to show the window after a short delay to allow frontend to process
-                    // This is a fallback in case the frontend doesn't call window.show()
-                    let app_for_show = app_for_emit.clone();
-                    tauri::async_runtime::spawn(async move {
-                        // Use std::thread::sleep in async context via spawn_blocking
-                        let _ = tauri::async_runtime::spawn_blocking(|| {
-                            std::thread::sleep(std::time::Duration::from_millis(200));
-                        })
-                        .await;
-                        if let Some(window) = app_for_show.get_webview_window("screenshot_overlay")
-                        {
-                            if let Err(e) = window.show() {
-                                log::error!("Window.show() failed (fallback): {}", e);
-                            }
-                        } else {
-                            log::error!(
-                                "Window 'screenshot_overlay' not found when trying to show"
-                            );
-                        }
-                    });
+                // Check if window still exists before emitting
+                let window_exists = app_for_emit_inner
+                    .get_webview_window("screenshot_overlay")
+                    .is_some();
+
+                if !window_exists {
+                    log::warn!("Window no longer exists when trying to emit screenshot data");
+                    return;
                 }
-                Err(e) => log::error!("Failed to emit open_screenshot_overlay event: {}", e),
-            }
-        });
 
-        app_clone.unlisten(event.id());
+                match app_for_emit_inner.emit_to(
+                    "screenshot_overlay",
+                    "open_screenshot_overlay",
+                    payload_for_emit_inner.clone(),
+                ) {
+                    Ok(_) => {
+                        // Try to show the window after a short delay to allow frontend to process
+                        // This is a fallback in case the frontend doesn't call window.show()
+                        let app_for_show = app_for_emit_inner.clone();
+                        tauri::async_runtime::spawn(async move {
+                            // Use std::thread::sleep in async context via spawn_blocking
+                            let _ = tauri::async_runtime::spawn_blocking(|| {
+                                std::thread::sleep(std::time::Duration::from_millis(200));
+                            })
+                            .await;
+
+                            // Check if window still exists and is valid
+                            if let Some(window) = app_for_show.get_webview_window("screenshot_overlay") {
+                                // Verify window is still valid before showing
+                                match window.is_visible() {
+                                    Ok(_) => {
+                                        if let Err(e) = window.show() {
+                                            log::error!("Window.show() failed (fallback): {}", e);
+                                        }
+                                    }
+                                    Err(_) => {
+                                        log::warn!("Window is in invalid state, skipping show");
+                                    }
+                                }
+                            } else {
+                                log::warn!(
+                                    "Window 'screenshot_overlay' not found when trying to show (may have been closed)"
+                                );
+                            }
+                        });
+                    }
+                    Err(e) => log::error!("Failed to emit open_screenshot_overlay event: {}", e),
+                }
+            });
+
+            // Unlisten after spawning the async task
+            app_for_unlisten.unlisten(event_id);
+        }
     });
 
     // Use trailing slash for Next.js static export compatibility
     // With trailingSlash: true, Next.js creates routes as directories with index.html
     let overlay_url = "tauri/overlay/screenshot/";
 
-    let _webview_window = tauri::WebviewWindowBuilder::new(
+    let webview_window = tauri::WebviewWindowBuilder::new(
         &app,
         "screenshot_overlay",
         tauri::WebviewUrl::App(overlay_url.into()),
@@ -143,6 +203,17 @@ pub async fn take_screenshot(app: AppHandle) -> Result<(), tauri::Error> {
         e
     })?;
 
+    // Set up window close event handler to clean up listeners
+    let app_for_close = app.clone();
+    let listener_id_for_close = listener_id.clone();
+    webview_window.on_window_event(move |event| {
+        if let tauri::WindowEvent::CloseRequested { .. } = event {
+            log::info!("Screenshot overlay window close requested, cleaning up listeners");
+            // Clean up the ready event listener
+            app_for_close.unlisten(listener_id_for_close);
+        }
+    });
+
     // Set up a fallback to show the window if frontend doesn't do it
     // This handles the case where frontend JavaScript fails to execute
     let app_for_fallback = app.clone();
@@ -153,26 +224,28 @@ pub async fn take_screenshot(app: AppHandle) -> Result<(), tauri::Error> {
         })
         .await;
 
-        // Check if window is still hidden
+        // Check if window still exists and is valid before trying to show
         if let Some(window) = app_for_fallback.get_webview_window("screenshot_overlay") {
+            // Verify window is still in a valid state
             match window.is_visible() {
                 Ok(false) => {
+                    // Window exists and is hidden - safe to show
                     log::warn!("Window is still hidden after 500ms, showing it now (fallback)");
                     if let Err(e) = window.show() {
                         log::error!("Window.show() failed (fallback): {}", e);
                     }
                 }
-                Err(e) => {
-                    log::error!("Failed to check window visibility: {}", e);
-                    // Try to show anyway
-                    if let Err(e2) = window.show() {
-                        log::error!("Window.show() failed (fallback after error): {}", e2);
-                    }
+                Ok(true) => {
+                    // Window is already visible, nothing to do
+                    log::debug!("Window is already visible, skipping fallback show");
                 }
-                _ => {}
+                Err(e) => {
+                    // Window is in invalid state - don't try to show it
+                    log::warn!("Window is in invalid state (may have been closed), skipping fallback show: {}", e);
+                }
             }
         } else {
-            log::error!("Window 'screenshot_overlay' not found for fallback show");
+            log::warn!("Window 'screenshot_overlay' not found for fallback show (may have been closed)");
         }
     });
 
