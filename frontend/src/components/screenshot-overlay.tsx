@@ -34,7 +34,7 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
     emit("screenshot_overlay_ready", { label: "screenshot_overlay" });
   }, []);
 
-  useTauriListeners("open_screenshot_overlay", (event: any) => {
+  const handleScreenshotEvent = useCallback((event: any) => {
     console.log("[screenshot-overlay] received open_screenshot_overlay event", {
       id: event?.id,
       payloadLength: event?.payload?.length ?? 0,
@@ -67,7 +67,9 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
         );
       }
     };
-  });
+  }, []);
+
+  useTauriListeners("open_screenshot_overlay", handleScreenshotEvent);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     const overlayEl = overlayRef.current;
@@ -135,87 +137,7 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
     [isSelecting, selection],
   );
 
-  const handlePointerUp = useCallback(
-    (e: React.PointerEvent) => {
-      const overlayEl = overlayRef.current;
-      if (!overlayEl) return;
-
-      // release pointer capture
-      try {
-        overlayEl.releasePointerCapture((e as any).pointerId);
-        console.log(
-          "[screenshot-overlay] releasePointerCapture",
-          (e as any).pointerId,
-        );
-      } catch (err) {
-        console.warn("[screenshot-overlay] releasePointerCapture failed", err);
-      }
-
-      console.log("[screenshot-overlay] pointerup", {
-        isSelecting,
-        selection,
-        pointerId: (e as any).pointerId,
-      });
-      if (isSelecting && selection) {
-        setIsSelecting(false);
-        const croppedDataUrl = cropSelection();
-        console.log(
-          "[screenshot-overlay] cropSelection result length",
-          croppedDataUrl?.length ?? 0,
-        );
-        // Auto exit with save, potentially could add setting later to customize when to save
-        // Call save
-        invoke("receive_screenshot_data", {
-          imageUrl: croppedDataUrl,
-        }).then(onClose);
-      }
-    },
-    [isSelecting, selection],
-  );
-
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      console.log("[screenshot-overlay] keydown", e.key);
-      if (e.key === "Escape") {
-        console.log("[screenshot-overlay] escape pressed -> closing overlay");
-        setIsSelecting(false);
-        setSelection(null);
-        onClose();
-      }
-    },
-    [onClose],
-  );
-
-  useEffect(() => {
-    console.log("[screenshot-overlay] adding keydown listener");
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      console.log("[screenshot-overlay] removing keydown listener");
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [handleKeyDown]);
-
-  // log selection changes to trace freezes
-  useEffect(() => {
-    console.log("[screenshot-overlay] selection changed", selection);
-  }, [selection]);
-
-  const getSelectionStyle = () => {
-    if (!selection) return {};
-
-    const left = Math.min(selection.startX, selection.endX);
-    const top = Math.min(selection.startY, selection.endY);
-    const width = Math.abs(selection.endX - selection.startX);
-    const height = Math.abs(selection.endY - selection.startY);
-
-    return {
-      left: `${left}px`,
-      top: `${top}px`,
-      width: `${width}px`,
-      height: `${height}px`,
-    };
-  };
-
+  // Helper function for scaling selection coordinates
   function getScaledSelection(
     canvas: HTMLCanvasElement,
     selection: SelectionArea,
@@ -239,7 +161,8 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
     return result;
   }
 
-  function cropSelection() {
+  // Define cropSelection before handlePointerUp so it can be referenced
+  const cropSelection = useCallback(() => {
     if (!canvasRef.current || !selection) return;
 
     const canvas = canvasRef.current;
@@ -285,7 +208,88 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
       croppedDataUrlLength: croppedDataUrl.length,
     });
     return croppedDataUrl;
-  }
+  }, [selection]);
+
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      const overlayEl = overlayRef.current;
+      if (!overlayEl) return;
+
+      // release pointer capture
+      try {
+        overlayEl.releasePointerCapture((e as any).pointerId);
+        console.log(
+          "[screenshot-overlay] releasePointerCapture",
+          (e as any).pointerId,
+        );
+      } catch (err) {
+        console.warn("[screenshot-overlay] releasePointerCapture failed", err);
+      }
+
+      console.log("[screenshot-overlay] pointerup", {
+        isSelecting,
+        selection,
+        pointerId: (e as any).pointerId,
+      });
+      if (isSelecting && selection) {
+        setIsSelecting(false);
+        const croppedDataUrl = cropSelection();
+        console.log(
+          "[screenshot-overlay] cropSelection result length",
+          croppedDataUrl?.length ?? 0,
+        );
+        // Auto exit with save, potentially could add setting later to customize when to save
+        // Call save
+        invoke("receive_screenshot_data", {
+          imageUrl: croppedDataUrl,
+        }).then(onClose);
+      }
+    },
+    [isSelecting, selection, cropSelection, onClose],
+  );
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      console.log("[screenshot-overlay] keydown", e.key);
+      if (e.key === "Escape") {
+        console.log("[screenshot-overlay] escape pressed -> closing overlay");
+        setIsSelecting(false);
+        setSelection(null);
+        onClose();
+      }
+    },
+    [onClose],
+  );
+
+  useEffect(() => {
+    console.log("[screenshot-overlay] adding keydown listener");
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      console.log("[screenshot-overlay] removing keydown listener");
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [handleKeyDown]);
+
+  // log selection changes to trace freezes
+  useEffect(() => {
+    console.log("[screenshot-overlay] selection changed", selection);
+  }, [selection]);
+
+  const getSelectionStyle = () => {
+    if (!selection) return {};
+
+    const left = Math.min(selection.startX, selection.endX);
+    const top = Math.min(selection.startY, selection.endY);
+    const width = Math.abs(selection.endX - selection.startX);
+    const height = Math.abs(selection.endY - selection.startY);
+
+    return {
+      left: `${left}px`,
+      top: `${top}px`,
+      width: `${width}px`,
+      height: `${height}px`,
+    };
+  };
 
   return (
     <div
