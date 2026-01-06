@@ -2,5 +2,12 @@
     "identifier": "desktop-capability",
     "platforms": ["macOS", "windows", "linux"],
     "windows": ["main"],
-    "permissions": ["global-shortcut:default"]
+    "permissions": [
+        "global-shortcut:default",
+        "notification:default",
+        "notification:allow-is-permission-granted",
+        "notification:allow-request-permission",
+        "notification:allow-notify",
+        "notification:allow-show"
+    ]
 }
