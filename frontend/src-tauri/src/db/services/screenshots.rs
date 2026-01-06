@@ -15,7 +15,7 @@ const DEFAULT_USER_NAME: &str = "Test User";
 const DEFAULT_USER_PASSWORD_HASH: &str = "test_hash"; // Placeholder for MVP
 
 /// Get or create a default test user for MVP
-async fn get_or_create_default_user(
+pub async fn get_or_create_default_user(
     db: &DatabaseConnection,
 ) -> Result<Uuid, DbErr> {
     // Try to find existing user by email
@@ -48,7 +48,7 @@ async fn get_or_create_default_user(
 }
 
 /// Find or create a folder by user_id and name
-async fn find_or_create_folder(
+pub async fn find_or_create_folder(
     db: &DatabaseConnection,
     user_id: Uuid,
     name: String,
@@ -92,7 +92,7 @@ async fn find_or_create_folder(
 }
 
 /// Find or create a course by folder_id and name
-async fn find_or_create_course(
+pub async fn find_or_create_course(
     db: &DatabaseConnection,
     folder_id: Uuid,
     name: String,
@@ -137,7 +137,7 @@ async fn find_or_create_course(
 }
 
 /// Find or create a subject by course_id and name
-async fn find_or_create_subject(
+pub async fn find_or_create_subject(
     db: &DatabaseConnection,
     course_id: Uuid,
     name: String,

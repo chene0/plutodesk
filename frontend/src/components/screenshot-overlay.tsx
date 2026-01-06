@@ -220,7 +220,7 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
   }, [selection]);
 
   const handlePointerUp = useCallback(
-    (e: React.PointerEvent) => {
+    async (e: React.PointerEvent) => {
       const overlayEl = overlayRef.current;
       if (!overlayEl) return;
 
@@ -234,11 +234,26 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
       if (isSelecting && selection) {
         setIsSelecting(false);
         const croppedDataUrl = cropSelection();
-        // Auto exit with save, potentially could add setting later to customize when to save
-        // Call save
-        invoke("receive_screenshot_data", {
-          imageUrl: croppedDataUrl,
-        }).then(onClose);
+        
+        // Session check is now done before screenshot is taken
+        // If we reach here, a session must be active
+        const problemName = prompt("Enter problem name:");
+        if (problemName) {
+          try {
+            await invoke("receive_screenshot_data", {
+              imageUrl: croppedDataUrl,
+              problemName: problemName,
+              folderId: null,
+              courseId: null,
+              subjectId: null,
+            });
+            onClose();
+          } catch (err) {
+            console.error("[screenshot-overlay] Failed to save screenshot:", err);
+            alert("Error saving screenshot. Please try again.");
+            onClose();
+          }
+        }
       }
     },
     [isSelecting, selection, cropSelection, onClose],

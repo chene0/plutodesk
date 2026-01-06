@@ -5,10 +5,12 @@ use std::sync::{Arc, Mutex};
 
 use crate::db::{services, Db};
 use crate::dtos::screenshot::ScreenshotDto;
+use crate::session::SessionManagerState;
 use base64::{engine::general_purpose, prelude::*};
 use device_query::{DeviceQuery, DeviceState, MouseState};
 use image::{ExtendedColorType, ImageBuffer, ImageEncoder, Rgba};
 use tauri::{AppHandle, Emitter, Listener, Manager, State};
+use tauri_plugin_notification::NotificationExt;
 use xcap::Monitor;
 
 // Store screenshot data temporarily to avoid large event payloads
@@ -47,6 +49,72 @@ pub async fn get_screenshot_data(
 ) -> Result<Option<String>, tauri::Error> {
     let data = screenshot_data.lock().unwrap();
     Ok(data.clone())
+}
+
+/// Check if there's an active session. If not, show OS notification.
+/// Returns true if session is active, false if not.
+pub async fn check_session_and_notify(app: &AppHandle) -> bool {
+    // Check for active session
+    if let Some(session_manager) = app.try_state::<SessionManagerState>() {
+        let manager = session_manager.lock().unwrap();
+        if manager.get_active_session().is_some() {
+            // Session is active
+            return true;
+        }
+    }
+
+    // No active session - show notification and open window
+    log::info!("No active session detected, showing notification and opening session modal");
+    
+    // Show notification
+    if let Err(e) = app.notification()
+        .builder()
+        .title("Active Session Required")
+        .body("Please start a session before taking screenshots")
+        .show() {
+        log::error!("Failed to show notification: {}", e);
+    }
+    
+    // Open or focus main window with session modal
+    if let Err(e) = open_or_focus_main_window_with_session_modal(app).await {
+        log::error!("Failed to open main window: {}", e);
+    }
+    
+    false
+}
+
+/// Open or focus the main window and show the session modal
+pub async fn open_or_focus_main_window_with_session_modal(app: &AppHandle) -> Result<(), tauri::Error> {
+    // Check if main window exists
+    if let Some(main_window) = app.get_webview_window("main") {
+        // Window exists - show and focus it
+        log::info!("Main window exists, focusing it");
+        main_window.show()?;
+        main_window.set_focus()?;
+    } else {
+        // Window doesn't exist - create it
+        log::info!("Main window doesn't exist, creating it");
+        use tauri::WebviewWindowBuilder;
+        use tauri::WebviewUrl;
+        
+        let window = WebviewWindowBuilder::new(
+            app,
+            "main",
+            WebviewUrl::default()
+        )
+        .title("plutodesk")
+        .inner_size(800.0, 600.0)
+        .resizable(true)
+        .build()?;
+        
+        window.show()?;
+        window.set_focus()?;
+    }
+    
+    // Emit event to open session modal
+    app.emit("open-session-modal", ())?;
+    
+    Ok(())
 }
 
 // Initiate screenshot overlay interface
@@ -303,19 +371,101 @@ fn write_image_data_url_to_local_fs(
 pub async fn receive_screenshot_data(
     app: AppHandle,
     image_url: String,
+    problem_name: String,
+    folder_id: Option<String>,
+    course_id: Option<String>,
+    subject_id: Option<String>,
 ) -> Result<(), tauri::Error> {
-    // Passed struct has placeholder data for now,
-    // In the future, these will be determined by a
+    use crate::session::SessionManagerState;
+    use uuid::Uuid;
 
-    let folder_name = "Computer Science".to_string();
-    let course_name = "Data Structures & Algorithms".to_string();
-    let subject_name = "Binary Trees".to_string();
-    let problem_name = "Lowest Common Ancestor".to_string();
+    let db = app.state::<Db>();
+    
+    // Determine folder/course/subject IDs
+    let (folder_uuid, course_uuid, subject_uuid) = if let (Some(f), Some(c), Some(s)) = (folder_id, course_id, subject_id) {
+        // IDs provided directly (inline session selection)
+        let folder_uuid = Uuid::parse_str(&f).map_err(|e| {
+            tauri::Error::from(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("Invalid folder_id: {}", e),
+            ))
+        })?;
+        let course_uuid = Uuid::parse_str(&c).map_err(|e| {
+            tauri::Error::from(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("Invalid course_id: {}", e),
+            ))
+        })?;
+        let subject_uuid = Uuid::parse_str(&s).map_err(|e| {
+            tauri::Error::from(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("Invalid subject_id: {}", e),
+            ))
+        })?;
+        (folder_uuid, course_uuid, subject_uuid)
+    } else {
+        // Use active session
+        let session_manager = app.state::<SessionManagerState>();
+        let manager = session_manager.lock().unwrap();
+        let session = manager.get_active_session().ok_or_else(|| {
+            tauri::Error::from(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "No active session. Please start a session before taking screenshots.",
+            ))
+        })?;
+        (session.folder_id, session.course_id, session.subject_id)
+    };
+
+    // Fetch names for filesystem path
+    let folder = services::get_folder_by_id(db.connection(), folder_uuid)
+        .await
+        .map_err(|e| {
+            tauri::Error::from(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Database error: {}", e),
+            ))
+        })?
+        .ok_or_else(|| {
+            tauri::Error::from(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("Folder with id {} not found", folder_uuid),
+            ))
+        })?;
+
+    let course = services::get_course_by_id(db.connection(), course_uuid)
+        .await
+        .map_err(|e| {
+            tauri::Error::from(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Database error: {}", e),
+            ))
+        })?
+        .ok_or_else(|| {
+            tauri::Error::from(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("Course with id {} not found", course_uuid),
+            ))
+        })?;
+
+    let subject = services::get_subject_by_id(db.connection(), subject_uuid)
+        .await
+        .map_err(|e| {
+            tauri::Error::from(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Database error: {}", e),
+            ))
+        })?
+        .ok_or_else(|| {
+            tauri::Error::from(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("Subject with id {} not found", subject_uuid),
+            ))
+        })?;
 
     let dto = ScreenshotDto {
-        folder_name: folder_name.clone(),
-        course_name: course_name.clone(),
-        subject_name: subject_name.clone(),
+        folder_name: folder.name,
+        course_name: course.name,
+        subject_name: subject.name,
         problem_name: problem_name.clone(),
         base64_data: image_url,
     };
@@ -324,7 +474,6 @@ pub async fn receive_screenshot_data(
     let image_path = write_image_data_url_to_local_fs(app.clone(), dto.clone())?;
 
     // Save to database
-    let db = app.state::<Db>();
     services::save_screenshot_to_db(db.connection(), dto, image_path)
         .await
         .map_err(|e| {
