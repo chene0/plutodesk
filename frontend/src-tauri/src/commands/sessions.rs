@@ -135,27 +135,33 @@ pub async fn create_and_start_session(
         .map_err(|e| e.to_string())?;
 
     // Find or create folder
-    let folder = services::find_or_create_folder(db.connection(), user_id, request.folder_name.clone())
-        .await
-        .map_err(|e| e.to_string())?;
+    let folder =
+        services::find_or_create_folder(db.connection(), user_id, request.folder_name.clone())
+            .await
+            .map_err(|e| e.to_string())?;
 
     // Find or create course
-    let course = services::find_or_create_course(db.connection(), folder.id, request.course_name.clone())
-        .await
-        .map_err(|e| e.to_string())?;
+    let course =
+        services::find_or_create_course(db.connection(), folder.id, request.course_name.clone())
+            .await
+            .map_err(|e| e.to_string())?;
 
     // Find or create subject
-    let subject = services::find_or_create_subject(db.connection(), course.id, request.subject_name.clone())
-        .await
-        .map_err(|e| e.to_string())?;
+    let subject =
+        services::find_or_create_subject(db.connection(), course.id, request.subject_name.clone())
+            .await
+            .map_err(|e| e.to_string())?;
 
     // Auto-generate session name from folder/course/subject
-    let session_name = format!("{} / {} / {}", request.folder_name, request.course_name, request.subject_name);
+    let session_name = format!(
+        "{} / {} / {}",
+        request.folder_name, request.course_name, request.subject_name
+    );
 
     // Create session
     let session = {
         let mut manager = session_manager.lock().unwrap();
-        
+
         // Check if a session with the same folder/course/subject already exists
         if manager.session_exists_for_context(folder.id, course.id, subject.id) {
             return Err(format!(
@@ -163,7 +169,7 @@ pub async fn create_and_start_session(
                 session_name
             ));
         }
-        
+
         let session = manager.create_session(
             session_name,
             folder.id,
@@ -177,7 +183,7 @@ pub async fn create_and_start_session(
         manager
             .save_to_file(&sessions_path)
             .map_err(|e| format!("Failed to save sessions: {}", e))?;
-        
+
         session
     };
 
@@ -234,4 +240,3 @@ fn get_sessions_file_path(app: &AppHandle) -> Result<std::path::PathBuf, String>
 
     Ok(app_data_dir.join("sessions.json"))
 }
-
