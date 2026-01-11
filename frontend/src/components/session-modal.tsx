@@ -50,6 +50,15 @@ export function SessionModal() {
 
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
+
+  // "Create new" mode state
+  const [isCreatingNewFolder, setIsCreatingNewFolder] = useState(false);
+  const [isCreatingNewCourse, setIsCreatingNewCourse] = useState(false);
+  const [isCreatingNewSubject, setIsCreatingNewSubject] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [newCourseName, setNewCourseName] = useState("");
+  const [newSubjectName, setNewSubjectName] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -182,9 +191,61 @@ export function SessionModal() {
     }
   };
 
+  const validateNewItemName = (name: string, existingItems: Array<{name: string}>, itemType: string): boolean => {
+    if (!name.trim()) {
+      setError(`${itemType} name cannot be empty`);
+      return false;
+    }
+    
+    const duplicate = existingItems.find(
+      (item) => item.name.toLowerCase() === name.trim().toLowerCase()
+    );
+    
+    if (duplicate) {
+      setError(`A ${itemType.toLowerCase()} named "${name}" already exists. Please select it from the dropdown or choose a different name.`);
+      return false;
+    }
+    
+    return true;
+  };
+
+  const resetFormState = () => {
+    setShowNewSessionForm(false);
+    setFolderInput("");
+    setCourseInput("");
+    setSubjectInput("");
+    setIsCreatingNewFolder(false);
+    setIsCreatingNewCourse(false);
+    setIsCreatingNewSubject(false);
+    setNewFolderName("");
+    setNewCourseName("");
+    setNewSubjectName("");
+    setSelectedFolderId(null);
+    setSelectedCourseId(null);
+    setSelectedSubjectId(null);
+    setError(null);
+  };
+
   const handleCreateSession = async () => {
-    if (!folderInput.trim() || !courseInput.trim() || !subjectInput.trim()) {
+    // Determine final names (either from dropdown selection or new input)
+    const finalFolderName = isCreatingNewFolder ? newFolderName : folderInput;
+    const finalCourseName = isCreatingNewCourse ? newCourseName : courseInput;
+    const finalSubjectName = isCreatingNewSubject ? newSubjectName : subjectInput;
+
+    // Validate all fields are filled
+    if (!finalFolderName.trim() || !finalCourseName.trim() || !finalSubjectName.trim()) {
       setError("Folder, course, and subject are required");
+      return;
+    }
+
+    // Validate no duplicates for new items
+    if (isCreatingNewFolder && !validateNewItemName(newFolderName, folders, "Folder")) {
+      return;
+    }
+    if (isCreatingNewCourse && !validateNewItemName(newCourseName, courses, "Course")) {
+      return;
+    }
+    if (isCreatingNewSubject && !validateNewItemName(newSubjectName, subjects, "Subject")) {
       return;
     }
 
@@ -193,17 +254,14 @@ export function SessionModal() {
     try {
       await invoke("create_and_start_session", {
         request: {
-          folder_name: folderInput,
-          course_name: courseInput,
-          subject_name: subjectInput,
+          folder_name: finalFolderName,
+          course_name: finalCourseName,
+          subject_name: finalSubjectName,
         },
       });
       await loadSessions();
       await loadActiveSession();
-      setShowNewSessionForm(false);
-      setFolderInput("");
-      setCourseInput("");
-      setSubjectInput("");
+      resetFormState();
       setIsOpen(false);
     } catch (err) {
       console.error("Failed to create session:", err);
@@ -213,16 +271,65 @@ export function SessionModal() {
     }
   };
 
-  const handleFolderInputChange = (value: string) => {
-    setFolderInput(value);
-    const folder = folders.find((f) => f.name === value);
-    setSelectedFolderId(folder?.id || null);
+  const handleFolderChange = (value: string) => {
+    if (value === "CREATE_NEW") {
+      setIsCreatingNewFolder(true);
+      setFolderInput("");
+      setSelectedFolderId(null);
+      setCourseInput("");
+      setSelectedCourseId(null);
+      setSubjectInput("");
+      setSelectedSubjectId(null);
+      setCourses([]);
+      setSubjects([]);
+    } else {
+      setIsCreatingNewFolder(false);
+      const folder = folders.find((f) => f.id === value);
+      if (folder) {
+        setFolderInput(folder.name);
+        setSelectedFolderId(folder.id);
+        setCourseInput("");
+        setSelectedCourseId(null);
+        setSubjectInput("");
+        setSelectedSubjectId(null);
+        setSubjects([]);
+      }
+    }
   };
 
-  const handleCourseInputChange = (value: string) => {
-    setCourseInput(value);
-    const course = courses.find((c) => c.name === value);
-    setSelectedCourseId(course?.id || null);
+  const handleCourseChange = (value: string) => {
+    if (value === "CREATE_NEW") {
+      setIsCreatingNewCourse(true);
+      setCourseInput("");
+      setSelectedCourseId(null);
+      setSubjectInput("");
+      setSelectedSubjectId(null);
+      setSubjects([]);
+    } else {
+      setIsCreatingNewCourse(false);
+      const course = courses.find((c) => c.id === value);
+      if (course) {
+        setCourseInput(course.name);
+        setSelectedCourseId(course.id);
+        setSubjectInput("");
+        setSelectedSubjectId(null);
+      }
+    }
+  };
+
+  const handleSubjectChange = (value: string) => {
+    if (value === "CREATE_NEW") {
+      setIsCreatingNewSubject(true);
+      setSubjectInput("");
+      setSelectedSubjectId(null);
+    } else {
+      setIsCreatingNewSubject(false);
+      const subject = subjects.find((s) => s.id === value);
+      if (subject) {
+        setSubjectInput(subject.name);
+        setSelectedSubjectId(subject.id);
+      }
+    }
   };
 
   if (!isOpen) return null;
@@ -317,55 +424,124 @@ export function SessionModal() {
 
             <div>
               <label className="block text-sm font-medium mb-1">Folder</label>
-              <input
-                type="text"
-                list="folders"
-                value={folderInput}
-                onChange={(e) => handleFolderInputChange(e.target.value)}
-                className="w-full border rounded px-3 py-2"
-                placeholder="Select or type new folder name"
-              />
-              <datalist id="folders">
-                {folders.map((folder) => (
-                  <option key={folder.id} value={folder.name} />
-                ))}
-              </datalist>
+              {!isCreatingNewFolder ? (
+                <select
+                  value={selectedFolderId || ""}
+                  onChange={(e) => handleFolderChange(e.target.value)}
+                  className="w-full border rounded px-3 py-2"
+                >
+                  <option value="">Select a folder...</option>
+                  {folders.map((folder) => (
+                    <option key={folder.id} value={folder.id}>
+                      {folder.name}
+                    </option>
+                  ))}
+                  <option value="CREATE_NEW">+ Create new folder...</option>
+                </select>
+              ) : (
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={newFolderName}
+                    onChange={(e) => setNewFolderName(e.target.value)}
+                    className="w-full border rounded px-3 py-2"
+                    placeholder="Enter new folder name"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCreatingNewFolder(false);
+                      setNewFolderName("");
+                    }}
+                    className="text-sm text-gray-600 hover:text-gray-800"
+                  >
+                    ← Back to folder selection
+                  </button>
+                </div>
+              )}
             </div>
 
             <div>
               <label className="block text-sm font-medium mb-1">Course</label>
-              <input
-                type="text"
-                list="courses"
-                value={courseInput}
-                onChange={(e) => handleCourseInputChange(e.target.value)}
-                className="w-full border rounded px-3 py-2"
-                placeholder="Select or type new course name"
-                disabled={!folderInput}
-              />
-              <datalist id="courses">
-                {courses.map((course) => (
-                  <option key={course.id} value={course.name} />
-                ))}
-              </datalist>
+              {!isCreatingNewCourse ? (
+                <select
+                  value={selectedCourseId || ""}
+                  onChange={(e) => handleCourseChange(e.target.value)}
+                  className="w-full border rounded px-3 py-2"
+                  disabled={!selectedFolderId && !isCreatingNewFolder}
+                >
+                  <option value="">Select a course...</option>
+                  {courses.map((course) => (
+                    <option key={course.id} value={course.id}>
+                      {course.name}
+                    </option>
+                  ))}
+                  <option value="CREATE_NEW">+ Create new course...</option>
+                </select>
+              ) : (
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={newCourseName}
+                    onChange={(e) => setNewCourseName(e.target.value)}
+                    className="w-full border rounded px-3 py-2"
+                    placeholder="Enter new course name"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCreatingNewCourse(false);
+                      setNewCourseName("");
+                    }}
+                    className="text-sm text-gray-600 hover:text-gray-800"
+                  >
+                    ← Back to course selection
+                  </button>
+                </div>
+              )}
             </div>
 
             <div>
               <label className="block text-sm font-medium mb-1">Subject</label>
-              <input
-                type="text"
-                list="subjects"
-                value={subjectInput}
-                onChange={(e) => setSubjectInput(e.target.value)}
-                className="w-full border rounded px-3 py-2"
-                placeholder="Select or type new subject name"
-                disabled={!courseInput}
-              />
-              <datalist id="subjects">
-                {subjects.map((subject) => (
-                  <option key={subject.id} value={subject.name} />
-                ))}
-              </datalist>
+              {!isCreatingNewSubject ? (
+                <select
+                  value={selectedSubjectId || ""}
+                  onChange={(e) => handleSubjectChange(e.target.value)}
+                  className="w-full border rounded px-3 py-2"
+                  disabled={!selectedCourseId && !isCreatingNewCourse}
+                >
+                  <option value="">Select a subject...</option>
+                  {subjects.map((subject) => (
+                    <option key={subject.id} value={subject.id}>
+                      {subject.name}
+                    </option>
+                  ))}
+                  <option value="CREATE_NEW">+ Create new subject...</option>
+                </select>
+              ) : (
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={newSubjectName}
+                    onChange={(e) => setNewSubjectName(e.target.value)}
+                    className="w-full border rounded px-3 py-2"
+                    placeholder="Enter new subject name"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCreatingNewSubject(false);
+                      setNewSubjectName("");
+                    }}
+                    className="text-sm text-gray-600 hover:text-gray-800"
+                  >
+                    ← Back to subject selection
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-2">
@@ -377,13 +553,7 @@ export function SessionModal() {
                 Create & Start Session
               </button>
               <button
-                onClick={() => {
-                  setShowNewSessionForm(false);
-                  setFolderInput("");
-                  setCourseInput("");
-                  setSubjectInput("");
-                  setError(null);
-                }}
+                onClick={resetFormState}
                 className="flex-1 bg-gray-300 text-gray-700 py-2 rounded hover:bg-gray-400"
               >
                 Cancel

@@ -55,7 +55,14 @@ pub async fn get_folders_by_user(
     db: State<'_, Db>,
     user_id: String,
 ) -> Result<String, String> {
-    let user_uuid = Uuid::parse_str(&user_id).map_err(|e| e.to_string())?;
+    // For MVP: if all-zeros UUID is passed, use the default user
+    let user_uuid = if user_id == "00000000-0000-0000-0000-000000000000" {
+        services::get_or_create_default_user(db.connection())
+            .await
+            .map_err(|e| e.to_string())?
+    } else {
+        Uuid::parse_str(&user_id).map_err(|e| e.to_string())?
+    };
 
     let folders = services::get_folders_by_user(db.connection(), user_uuid)
         .await
