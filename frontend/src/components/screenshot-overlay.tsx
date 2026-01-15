@@ -99,7 +99,7 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
     } catch (error) {
       console.error("[screenshot-overlay] Error processing screenshot", error);
     }
-  }, []);
+  }, [getAppWindow]);
 
   const handleScreenshotEvent = useCallback((event: any) => {
     // Handle different payload structures

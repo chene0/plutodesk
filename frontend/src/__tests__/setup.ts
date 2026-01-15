@@ -25,11 +25,13 @@ jest.mock('@tauri-apps/api/window', () => ({
 // createImageBitmap is not implemented in JSDOM.
 // Individual tests may override this mock as needed.
 if (typeof global.createImageBitmap === 'undefined') {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (global as any).createImageBitmap = jest.fn(async () => ({
+  // Avoid referencing @typescript-eslint rules here since this repo's eslint
+  // config may not load that plugin during CI lint.
+  (globalThis as unknown as { createImageBitmap?: typeof globalThis.createImageBitmap }).createImageBitmap =
+    jest.fn(async () => ({
     width: 1,
     height: 1,
-  }));
+  })) as unknown as typeof globalThis.createImageBitmap;
 }
 
 // Canvas APIs are not implemented in JSDOM by default.
