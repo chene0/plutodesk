@@ -423,9 +423,12 @@ export function SessionModal() {
             </p>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Folder</label>
+              <label htmlFor="session-folder" className="block text-sm font-medium mb-1">
+                Folder
+              </label>
               {!isCreatingNewFolder ? (
                 <select
+                  id="session-folder"
                   value={selectedFolderId || ""}
                   onChange={(e) => handleFolderChange(e.target.value)}
                   className="w-full border rounded px-3 py-2"
@@ -441,6 +444,7 @@ export function SessionModal() {
               ) : (
                 <div className="space-y-2">
                   <input
+                    id="session-folder"
                     type="text"
                     value={newFolderName}
                     onChange={(e) => setNewFolderName(e.target.value)}
@@ -463,9 +467,12 @@ export function SessionModal() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Course</label>
+              <label htmlFor="session-course" className="block text-sm font-medium mb-1">
+                Course
+              </label>
               {!isCreatingNewCourse ? (
                 <select
+                  id="session-course"
                   value={selectedCourseId || ""}
                   onChange={(e) => handleCourseChange(e.target.value)}
                   className="w-full border rounded px-3 py-2"
@@ -482,6 +489,7 @@ export function SessionModal() {
               ) : (
                 <div className="space-y-2">
                   <input
+                    id="session-course"
                     type="text"
                     value={newCourseName}
                     onChange={(e) => setNewCourseName(e.target.value)}
@@ -504,9 +512,12 @@ export function SessionModal() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Subject</label>
+              <label htmlFor="session-subject" className="block text-sm font-medium mb-1">
+                Subject
+              </label>
               {!isCreatingNewSubject ? (
                 <select
+                  id="session-subject"
                   value={selectedSubjectId || ""}
                   onChange={(e) => handleSubjectChange(e.target.value)}
                   className="w-full border rounded px-3 py-2"
@@ -523,6 +534,7 @@ export function SessionModal() {
               ) : (
                 <div className="space-y-2">
                   <input
+                    id="session-subject"
                     type="text"
                     value={newSubjectName}
                     onChange={(e) => setNewSubjectName(e.target.value)}

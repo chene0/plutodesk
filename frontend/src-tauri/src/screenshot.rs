@@ -496,6 +496,10 @@ pub fn close_screenshot_overlay(app: AppHandle) -> Result<(), tauri::Error> {
 }
 
 #[cfg(test)]
+#[path = "screenshot_window_lifecycle_test.rs"]
+mod screenshot_window_lifecycle_test;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use base64::{engine::general_purpose, Engine};

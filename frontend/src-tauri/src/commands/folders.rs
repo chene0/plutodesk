@@ -101,3 +101,7 @@ pub async fn delete_folder(db: State<'_, Db>, id: String) -> Result<String, Stri
 
     Ok("Folder deleted successfully".to_string())
 }
+
+#[cfg(test)]
+#[path = "folders_test.rs"]
+mod folders_test;

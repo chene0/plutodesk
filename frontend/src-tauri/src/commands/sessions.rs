@@ -240,3 +240,7 @@ fn get_sessions_file_path(app: &AppHandle) -> Result<std::path::PathBuf, String>
 
     Ok(app_data_dir.join("sessions.json"))
 }
+
+#[cfg(test)]
+#[path = "sessions_test.rs"]
+mod sessions_test;
