@@ -1,10 +1,47 @@
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, Runtime, Emitter,
+    AppHandle, Emitter, Manager, Runtime, WebviewUrl, WebviewWindowBuilder,
 };
 
 use crate::session::SessionManagerState;
+use tauri_plugin_notification::NotificationExt;
+
+fn any_ui_window_visible<R: Runtime>(app: &AppHandle<R>) -> bool {
+    app.webview_windows()
+        .values()
+        .any(|w| w.is_visible().ok().unwrap_or(true))
+}
+
+fn focus_or_create_main_window<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+    // 1) Preferred: focus the main window by label.
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+        return Ok(());
+    }
+
+    // 2) Fallback: focus any existing window (label might differ).
+    let windows = app.webview_windows();
+    if let Some((_label, window)) = windows.iter().next() {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+        return Ok(());
+    }
+
+    // 3) No windows exist: create a main window.
+    // Use a route-style URL so this works in both dev (Next dev server) and
+    // production (static export where / maps to index.html).
+    let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("/".into()))
+        .title("plutodesk")
+        .build()?;
+    let _ = window.show();
+    let _ = window.unminimize();
+    let _ = window.set_focus();
+    Ok(())
+}
 
 pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
@@ -29,7 +66,10 @@ pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
             }
             "start_session" => {
                 log::info!("Start/Switch Session menu item clicked");
-                // Emit event to frontend to open session modal
+                if let Err(e) = focus_or_create_main_window(app) {
+                    log::warn!("Failed to focus/create main window from tray: {e}");
+                }
+                // Emit event to frontend to open session modal (after focusing)
                 app.emit("open-session-modal", ()).ok();
             }
             "end_session" => {
@@ -37,6 +77,7 @@ pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
                 // End the current session
                 if let Some(session_manager) = app.try_state::<SessionManagerState>() {
                     let mut manager = session_manager.lock().unwrap();
+                    let ended_name = manager.get_active_session().map(|s| s.name.clone());
                     manager.end_session();
                     
                     // Persist to file
@@ -45,6 +86,20 @@ pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
                         if let Err(e) = manager.save_to_file(&sessions_path) {
                             log::error!("Failed to save sessions: {}", e);
                         }
+                    }
+
+                    // Notify user without stealing focus
+                    let (title, body) = match ended_name {
+                        Some(name) => ("Session Ended", format!("Ended: {name}")),
+                        None => ("No Active Session", "There was no active session to end.".to_string()),
+                    };
+                    if let Err(e) = app.notification().builder().title(title).body(body).show() {
+                        log::error!("Failed to show notification: {}", e);
+                    }
+
+                    // If UI is open/visible, notify frontend to refresh session state
+                    if any_ui_window_visible(app) {
+                        app.emit("session-state-changed", ()).ok();
                     }
                 }
             }

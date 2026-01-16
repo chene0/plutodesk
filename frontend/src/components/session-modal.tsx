@@ -75,9 +75,76 @@ export function SessionModal() {
     });
 
     return () => {
-      unlisten.then((fn) => fn());
+      unlisten.then((fn) => {
+        const hasEventInternals =
+          typeof (globalThis as any).window !== 'undefined' &&
+          !!(globalThis as any).window.__TAURI_INTERNALS__?.event &&
+          typeof (globalThis as any).window.__TAURI_INTERNALS__?.event?.unregisterListener === 'function';
+
+        if (!hasEventInternals) {
+          return;
+        }
+
+        try {
+          const maybePromise = fn();
+          if (maybePromise && typeof (maybePromise as any).then === 'function') {
+            (maybePromise as any).catch((e: any) => {
+              console.warn("[session-modal] Unlisten promise rejected:", e);
+            });
+          }
+        } catch (e: any) {
+          console.warn("[session-modal] Unlisten threw:", e);
+        }
+      });
     };
   }, []);
+
+  useEffect(() => {
+    // Refresh session state when backend changes it (e.g. tray "End Session"),
+    // but only if the modal UI is currently open.
+    const unlisten = listen("session-state-changed", async () => {
+      if (!isOpen) return;
+
+      try {
+        const result = await invoke<SessionResponse[]>("get_all_sessions");
+        setSessions(result);
+      } catch (err) {
+        console.error("Failed to load sessions:", err);
+        setError("Failed to load sessions");
+      }
+
+      try {
+        const result = await invoke<SessionResponse | null>("get_active_session");
+        setActiveSession(result);
+      } catch (err) {
+        console.error("Failed to load active session:", err);
+      }
+    });
+
+    return () => {
+      unlisten.then((fn) => {
+        const hasEventInternals =
+          typeof (globalThis as any).window !== 'undefined' &&
+          !!(globalThis as any).window.__TAURI_INTERNALS__?.event &&
+          typeof (globalThis as any).window.__TAURI_INTERNALS__?.event?.unregisterListener === 'function';
+
+        if (!hasEventInternals) {
+          return;
+        }
+
+        try {
+          const maybePromise = fn();
+          if (maybePromise && typeof (maybePromise as any).then === 'function') {
+            (maybePromise as any).catch((e: any) => {
+              console.warn("[session-modal] Unlisten promise rejected:", e);
+            });
+          }
+        } catch (e: any) {
+          console.warn("[session-modal] Unlisten threw:", e);
+        }
+      });
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
