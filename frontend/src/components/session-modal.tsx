@@ -86,12 +86,11 @@ export function SessionModal() {
         }
 
         try {
-          const maybePromise = fn();
-          if (maybePromise && typeof (maybePromise as any).then === 'function') {
-            (maybePromise as any).catch((e: any) => {
-              console.warn("[session-modal] Unlisten promise rejected:", e);
-            });
-          }
+          // `fn` may return void; in some environments it can be async.
+          // Avoid truthiness checks on `void` (Next typecheck) and just wrap.
+          Promise.resolve(fn()).catch((e: any) => {
+            console.warn("[session-modal] Unlisten promise rejected:", e);
+          });
         } catch (e: any) {
           console.warn("[session-modal] Unlisten threw:", e);
         }
@@ -133,12 +132,11 @@ export function SessionModal() {
         }
 
         try {
-          const maybePromise = fn();
-          if (maybePromise && typeof (maybePromise as any).then === 'function') {
-            (maybePromise as any).catch((e: any) => {
-              console.warn("[session-modal] Unlisten promise rejected:", e);
-            });
-          }
+          // `fn` may return void; in some environments it can be async.
+          // Avoid truthiness checks on `void` (Next typecheck) and just wrap.
+          Promise.resolve(fn()).catch((e: any) => {
+            console.warn("[session-modal] Unlisten promise rejected:", e);
+          });
         } catch (e: any) {
           console.warn("[session-modal] Unlisten threw:", e);
         }
