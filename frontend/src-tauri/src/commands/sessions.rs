@@ -8,7 +8,7 @@ use uuid::Uuid;
 pub struct CreateSessionRequest {
     pub folder_name: String,
     pub course_name: String,
-    pub subject_name: String,
+    pub set_name: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -17,10 +17,10 @@ pub struct SessionResponse {
     pub name: String,
     pub folder_id: String,
     pub course_id: String,
-    pub subject_id: String,
+    pub set_id: String,
     pub folder_name: String,
     pub course_name: String,
-    pub subject_name: String,
+    pub set_name: String,
     pub created_at: String,
     pub last_used: String,
 }
@@ -30,7 +30,7 @@ impl SessionResponse {
         session: &SessionState,
         db: &sea_orm::DatabaseConnection,
     ) -> Result<Self, String> {
-        // Fetch folder, course, and subject names from database
+        // Fetch folder, course, and set names from database
         let folder = services::get_folder_by_id(db, session.folder_id)
             .await
             .map_err(|e| e.to_string())?
@@ -41,20 +41,20 @@ impl SessionResponse {
             .map_err(|e| e.to_string())?
             .ok_or_else(|| format!("Course with id {} not found", session.course_id))?;
 
-        let subject = services::get_subject_by_id(db, session.subject_id)
+        let set = services::get_set_by_id(db, session.set_id)
             .await
             .map_err(|e| e.to_string())?
-            .ok_or_else(|| format!("Subject with id {} not found", session.subject_id))?;
+            .ok_or_else(|| format!("Set with id {} not found", session.set_id))?;
 
         Ok(SessionResponse {
             id: session.id.to_string(),
             name: session.name.clone(),
             folder_id: session.folder_id.to_string(),
             course_id: session.course_id.to_string(),
-            subject_id: session.subject_id.to_string(),
+            set_id: session.set_id.to_string(),
             folder_name: folder.name,
             course_name: course.name,
-            subject_name: subject.name,
+            set_name: set.name,
             created_at: session.created_at.to_string(),
             last_used: session.last_used.to_string(),
         })
@@ -121,7 +121,7 @@ pub async fn start_session(
     Ok(())
 }
 
-/// Create a new session with folder/course/subject (creates entities if they don't exist)
+/// Create a new session with folder/course/set (creates entities if they don't exist)
 #[tauri::command]
 pub async fn create_and_start_session(
     session_manager: State<'_, SessionManagerState>,
@@ -146,26 +146,26 @@ pub async fn create_and_start_session(
             .await
             .map_err(|e| e.to_string())?;
 
-    // Find or create subject
-    let subject =
-        services::find_or_create_subject(db.connection(), course.id, request.subject_name.clone())
+    // Find or create set
+    let set =
+        services::find_or_create_set(db.connection(), course.id, request.set_name.clone())
             .await
             .map_err(|e| e.to_string())?;
 
-    // Auto-generate session name from folder/course/subject
+    // Auto-generate session name from folder/course/set
     let session_name = format!(
         "{} / {} / {}",
-        request.folder_name, request.course_name, request.subject_name
+        request.folder_name, request.course_name, request.set_name
     );
 
     // Create session
     let session = {
         let mut manager = session_manager.lock().unwrap();
 
-        // Check if a session with the same folder/course/subject already exists
-        if manager.session_exists_for_context(folder.id, course.id, subject.id) {
+        // Check if a session with the same folder/course/set already exists
+        if manager.session_exists_for_context(folder.id, course.id, set.id) {
             return Err(format!(
-                "A session for '{}' already exists. Please select a different folder/course/subject combination.",
+                "A session for '{}' already exists. Please select a different folder/course/set combination.",
                 session_name
             ));
         }
@@ -174,7 +174,7 @@ pub async fn create_and_start_session(
             session_name,
             folder.id,
             course.id,
-            subject.id,
+            set.id,
             true, // Start immediately
         );
 

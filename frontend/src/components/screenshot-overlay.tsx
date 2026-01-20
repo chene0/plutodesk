@@ -245,7 +245,7 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
               problemName: problemName,
               folderId: null,
               courseId: null,
-              subjectId: null,
+              setId: null,
             });
             onClose();
           } catch (err) {

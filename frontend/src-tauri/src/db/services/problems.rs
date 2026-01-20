@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 pub async fn create_problem(
     db: &DatabaseConnection,
-    subject_id: Uuid,
+    set_id: Uuid,
     title: String,
     description: Option<String>,
     image_path: Option<String>,
@@ -14,7 +14,7 @@ pub async fn create_problem(
 
     let problem = problems::ActiveModel {
         id: Set(Uuid::new_v4()),
-        subject_id: Set(subject_id),
+        set_id: Set(set_id),
         title: Set(title),
         description: Set(description),
         image_path: Set(image_path),
@@ -40,12 +40,12 @@ pub async fn get_problem_by_id(
     Problem::find_by_id(id).one(db).await
 }
 
-pub async fn get_problems_by_subject(
+pub async fn get_problems_by_set(
     db: &DatabaseConnection,
-    subject_id: Uuid,
+    set_id: Uuid,
 ) -> Result<Vec<problems::Model>, DbErr> {
     Problem::find()
-        .filter(problems::Column::SubjectId.eq(subject_id))
+        .filter(problems::Column::SetId.eq(set_id))
         .order_by_desc(problems::Column::CreatedAt)
         .all(db)
         .await
@@ -137,7 +137,7 @@ mod tests {
     use super::*;
     use crate::db::services::folders::create_folder;
     use crate::db::services::courses::create_course;
-    use crate::db::services::subjects::create_subject;
+    use crate::db::services::sets::create_set;
     use migration::{Migrator, MigratorTrait};
     use sea_orm::Database;
 
@@ -173,7 +173,7 @@ mod tests {
         user_id
     }
 
-    async fn create_test_subject(db: &DatabaseConnection) -> Uuid {
+    async fn create_test_set(db: &DatabaseConnection) -> Uuid {
         let user_id = create_test_user(db).await;
         let folder = create_folder(db, user_id, "Test Folder".to_string(), None, 0)
             .await
@@ -190,27 +190,27 @@ mod tests {
         .await
         .expect("Failed to create course");
 
-        let subject = create_subject(
+        let set = create_set(
             db,
             course.id,
-            "Test Subject".to_string(),
+            "Test Set".to_string(),
             None,
             0,
         )
         .await
-        .expect("Failed to create subject");
+        .expect("Failed to create set");
 
-        subject.id
+        set.id
     }
 
     #[tokio::test]
     async fn test_create_problem() {
         let db = setup_test_db().await;
-        let subject_id = create_test_subject(&db).await;
+        let set_id = create_test_set(&db).await;
 
         let problem = create_problem(
             &db,
-            subject_id,
+            set_id,
             "Test Problem".to_string(),
             Some("Description".to_string()),
             None,
@@ -229,11 +229,11 @@ mod tests {
     #[tokio::test]
     async fn test_update_problem_stats_success() {
         let db = setup_test_db().await;
-        let subject_id = create_test_subject(&db).await;
+        let set_id = create_test_set(&db).await;
 
         let problem = create_problem(
             &db,
-            subject_id,
+            set_id,
             "Test Problem".to_string(),
             None,
             None,
@@ -255,11 +255,11 @@ mod tests {
     #[tokio::test]
     async fn test_update_problem_stats_failure() {
         let db = setup_test_db().await;
-        let subject_id = create_test_subject(&db).await;
+        let set_id = create_test_set(&db).await;
 
         let problem = create_problem(
             &db,
-            subject_id,
+            set_id,
             "Test Problem".to_string(),
             None,
             None,
@@ -280,11 +280,11 @@ mod tests {
     #[tokio::test]
     async fn test_update_problem_stats_mixed() {
         let db = setup_test_db().await;
-        let subject_id = create_test_subject(&db).await;
+        let set_id = create_test_set(&db).await;
 
         let mut problem = create_problem(
             &db,
-            subject_id,
+            set_id,
             "Test Problem".to_string(),
             None,
             None,
@@ -317,22 +317,22 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_problems_by_subject() {
+    async fn test_get_problems_by_set() {
         let db = setup_test_db().await;
-        let subject_id = create_test_subject(&db).await;
+        let set_id = create_test_set(&db).await;
 
         // Create multiple problems
-        create_problem(&db, subject_id, "Problem 1".to_string(), None, None, None)
+        create_problem(&db, set_id, "Problem 1".to_string(), None, None, None)
             .await
             .expect("Failed to create problem");
-        create_problem(&db, subject_id, "Problem 2".to_string(), None, None, None)
+        create_problem(&db, set_id, "Problem 2".to_string(), None, None, None)
             .await
             .expect("Failed to create problem");
-        create_problem(&db, subject_id, "Problem 3".to_string(), None, None, None)
+        create_problem(&db, set_id, "Problem 3".to_string(), None, None, None)
             .await
             .expect("Failed to create problem");
 
-        let problems = get_problems_by_subject(&db, subject_id)
+        let problems = get_problems_by_set(&db, set_id)
             .await
             .expect("Failed to get problems");
 
@@ -342,11 +342,11 @@ mod tests {
     #[tokio::test]
     async fn test_update_problem() {
         let db = setup_test_db().await;
-        let subject_id = create_test_subject(&db).await;
+        let set_id = create_test_set(&db).await;
 
         let problem = create_problem(
             &db,
-            subject_id,
+            set_id,
             "Original".to_string(),
             None,
             None,
@@ -377,11 +377,11 @@ mod tests {
     #[tokio::test]
     async fn test_delete_problem() {
         let db = setup_test_db().await;
-        let subject_id = create_test_subject(&db).await;
+        let set_id = create_test_set(&db).await;
 
         let problem = create_problem(
             &db,
-            subject_id,
+            set_id,
             "To Delete".to_string(),
             None,
             None,

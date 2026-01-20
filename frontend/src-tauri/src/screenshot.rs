@@ -331,7 +331,7 @@ fn write_image_data_url_to_local_fs(
 ) -> Result<String, tauri::Error> {
     let relative_path = PathBuf::from(clean_name(&payload.folder_name))
         .join(clean_name(&payload.course_name))
-        .join(clean_name(&payload.subject_name));
+        .join(clean_name(&payload.set_name));
 
     let app_dir = app
         .path()
@@ -374,15 +374,15 @@ pub async fn receive_screenshot_data(
     problem_name: String,
     folder_id: Option<String>,
     course_id: Option<String>,
-    subject_id: Option<String>,
+    set_id: Option<String>,
 ) -> Result<(), tauri::Error> {
     use crate::session::SessionManagerState;
     use uuid::Uuid;
 
     let db = app.state::<Db>();
     
-    // Determine folder/course/subject IDs
-    let (folder_uuid, course_uuid, subject_uuid) = if let (Some(f), Some(c), Some(s)) = (folder_id, course_id, subject_id) {
+    // Determine folder/course/set IDs
+    let (folder_uuid, course_uuid, set_uuid) = if let (Some(f), Some(c), Some(s)) = (folder_id, course_id, set_id) {
         // IDs provided directly (inline session selection)
         let folder_uuid = Uuid::parse_str(&f).map_err(|e| {
             tauri::Error::from(std::io::Error::new(
@@ -396,13 +396,13 @@ pub async fn receive_screenshot_data(
                 format!("Invalid course_id: {}", e),
             ))
         })?;
-        let subject_uuid = Uuid::parse_str(&s).map_err(|e| {
+        let set_uuid = Uuid::parse_str(&s).map_err(|e| {
             tauri::Error::from(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
-                format!("Invalid subject_id: {}", e),
+                format!("Invalid set_id: {}", e),
             ))
         })?;
-        (folder_uuid, course_uuid, subject_uuid)
+        (folder_uuid, course_uuid, set_uuid)
     } else {
         // Use active session
         let session_manager = app.state::<SessionManagerState>();
@@ -413,7 +413,7 @@ pub async fn receive_screenshot_data(
                 "No active session. Please start a session before taking screenshots.",
             ))
         })?;
-        (session.folder_id, session.course_id, session.subject_id)
+        (session.folder_id, session.course_id, session.set_id)
     };
 
     // Fetch names for filesystem path
@@ -447,7 +447,7 @@ pub async fn receive_screenshot_data(
             ))
         })?;
 
-    let subject = services::get_subject_by_id(db.connection(), subject_uuid)
+    let set = services::get_set_by_id(db.connection(), set_uuid)
         .await
         .map_err(|e| {
             tauri::Error::from(std::io::Error::new(
@@ -458,14 +458,14 @@ pub async fn receive_screenshot_data(
         .ok_or_else(|| {
             tauri::Error::from(std::io::Error::new(
                 std::io::ErrorKind::NotFound,
-                format!("Subject with id {} not found", subject_uuid),
+                format!("Set with id {} not found", set_uuid),
             ))
         })?;
 
     let dto = ScreenshotDto {
         folder_name: folder.name,
         course_name: course.name,
-        subject_name: subject.name,
+        set_name: set.name,
         problem_name: problem_name.clone(),
         base64_data: image_url,
     };
@@ -555,7 +555,7 @@ mod tests {
         let dto_with_prefix = ScreenshotDto {
             folder_name: "Test Folder".to_string(),
             course_name: "Test Course".to_string(),
-            subject_name: "Test Subject".to_string(),
+            set_name: "Test Set".to_string(),
             problem_name: "Test Problem".to_string(),
             base64_data: format!("data:image/png;base64,{}", base64_image),
         };
@@ -570,10 +570,10 @@ mod tests {
         // Test directory structure creation logic
         let relative_path = PathBuf::from(clean_name(&dto_with_prefix.folder_name))
             .join(clean_name(&dto_with_prefix.course_name))
-            .join(clean_name(&dto_with_prefix.subject_name));
+            .join(clean_name(&dto_with_prefix.set_name));
 
         // Compare path components instead of string representation (platform-agnostic)
-        let expected_components = vec!["Test_Folder", "Test_Course", "Test_Subject"];
+        let expected_components = vec!["Test_Folder", "Test_Course", "Test_Set"];
         let actual_components: Vec<&str> =
             relative_path.iter().map(|c| c.to_str().unwrap()).collect();
         assert_eq!(actual_components, expected_components);

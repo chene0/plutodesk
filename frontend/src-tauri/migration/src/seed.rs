@@ -13,7 +13,7 @@ pub async fn seed(db: &DatabaseConnection) -> Result<(), DbErr> {
         .await?;
     db.execute(db.get_database_backend().build(&Query::delete().from_table(Problems::Table).to_owned()))
         .await?;
-    db.execute(db.get_database_backend().build(&Query::delete().from_table(Subjects::Table).to_owned()))
+    db.execute(db.get_database_backend().build(&Query::delete().from_table(Sets::Table).to_owned()))
         .await?;
     db.execute(db.get_database_backend().build(&Query::delete().from_table(Courses::Table).to_owned()))
         .await?;
@@ -119,22 +119,22 @@ pub async fn seed(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     log::info!("Created test course: Data Structures & Algorithms");
 
-    // Create a test subject
-    let subject_id = uuid::Uuid::new_v4().to_string();
-    let insert_subject = Query::insert()
-        .into_table(Subjects::Table)
+    // Create a test set
+    let set_id = uuid::Uuid::new_v4().to_string();
+    let insert_set = Query::insert()
+        .into_table(Sets::Table)
         .columns([
-            Subjects::Id,
-            Subjects::CourseId,
-            Subjects::Name,
-            Subjects::Description,
-            Subjects::SortOrder,
-            Subjects::CreatedAt,
-            Subjects::UpdatedAt,
-            Subjects::IsSynced,
+            Sets::Id,
+            Sets::CourseId,
+            Sets::Name,
+            Sets::Description,
+            Sets::SortOrder,
+            Sets::CreatedAt,
+            Sets::UpdatedAt,
+            Sets::IsSynced,
         ])
         .values_panic([
-            subject_id.clone().into(),
+            set_id.clone().into(),
             course_id.clone().into(),
             "Binary Trees".into(),
             "Tree traversal and manipulation".into(),
@@ -145,10 +145,10 @@ pub async fn seed(db: &DatabaseConnection) -> Result<(), DbErr> {
         ])
         .to_owned();
 
-    db.execute(db.get_database_backend().build(&insert_subject))
+    db.execute(db.get_database_backend().build(&insert_set))
         .await?;
 
-    log::info!("Created test subject: Binary Trees");
+    log::info!("Created test set: Binary Trees");
 
     // Create test problems
     let problem_ids = vec![
@@ -177,7 +177,7 @@ pub async fn seed(db: &DatabaseConnection) -> Result<(), DbErr> {
             .into_table(Problems::Table)
             .columns([
                 Problems::Id,
-                Problems::SubjectId,
+                Problems::SetId,
                 Problems::Title,
                 Problems::Description,
                 Problems::ConfidenceLevel,
@@ -190,7 +190,7 @@ pub async fn seed(db: &DatabaseConnection) -> Result<(), DbErr> {
             ])
             .values_panic([
                 problem_ids[i].clone().into(),
-                subject_id.clone().into(),
+                set_id.clone().into(),
                 (*title).into(),
                 (*description).into(),
                 0.into(),
@@ -286,7 +286,7 @@ enum Courses {
 }
 
 #[derive(DeriveIden)]
-enum Subjects {
+enum Sets {
     Table,
     Id,
     CourseId,
@@ -302,7 +302,7 @@ enum Subjects {
 enum Problems {
     Table,
     Id,
-    SubjectId,
+    SetId,
     Title,
     Description,
     ConfidenceLevel,

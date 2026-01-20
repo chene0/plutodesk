@@ -27,7 +27,7 @@ mod screenshot_session_integration_tests {
             .await
             .expect("Failed to create user");
 
-        // Create folder, course, subject
+        // Create folder, course, set
         let folder = services::find_or_create_folder(&db, user_id, "Computer Science".to_string())
             .await
             .expect("Failed to create folder");
@@ -36,10 +36,10 @@ mod screenshot_session_integration_tests {
             .await
             .expect("Failed to create course");
 
-        let subject =
-            services::find_or_create_subject(&db, course.id, "Dynamic Programming".to_string())
+        let set =
+            services::find_or_create_set(&db, course.id, "Dynamic Programming".to_string())
                 .await
-                .expect("Failed to create subject");
+                .expect("Failed to create set");
 
         // Create session
         let mut session_manager = SessionManager::new();
@@ -47,7 +47,7 @@ mod screenshot_session_integration_tests {
             "Test Session".to_string(),
             folder.id,
             course.id,
-            subject.id,
+            set.id,
             true,
         );
 
@@ -59,7 +59,7 @@ mod screenshot_session_integration_tests {
         let dto = ScreenshotDto {
             folder_name: "Computer Science".to_string(),
             course_name: "Algorithms".to_string(),
-            subject_name: "Dynamic Programming".to_string(),
+            set_name: "Dynamic Programming".to_string(),
             problem_name: "Knapsack Problem".to_string(),
             base64_data: "test_base64_data".to_string(),
         };
@@ -71,8 +71,8 @@ mod screenshot_session_integration_tests {
             .await
             .expect("Failed to save screenshot");
 
-        // Verify problem is saved to correct subject
-        assert_eq!(problem.subject_id, subject.id);
+        // Verify problem is saved to correct set
+        assert_eq!(problem.set_id, set.id);
         assert_eq!(problem.title, "Knapsack Problem");
         assert_eq!(problem.image_path, Some(image_path));
     }
@@ -86,7 +86,7 @@ mod screenshot_session_integration_tests {
             .await
             .expect("Failed to create user");
 
-        // Create session with new folder/course/subject names
+        // Create session with new folder/course/set names
         let folder = services::find_or_create_folder(&db, user_id, "Mathematics".to_string())
             .await
             .expect("Failed to create folder");
@@ -95,16 +95,16 @@ mod screenshot_session_integration_tests {
             .await
             .expect("Failed to create course");
 
-        let subject = services::find_or_create_subject(&db, course.id, "Derivatives".to_string())
+        let set = services::find_or_create_set(&db, course.id, "Derivatives".to_string())
             .await
-            .expect("Failed to create subject");
+            .expect("Failed to create set");
 
         let mut session_manager = SessionManager::new();
         session_manager.create_session(
             "Math Session".to_string(),
             folder.id,
             course.id,
-            subject.id,
+            set.id,
             true,
         );
 
@@ -113,7 +113,7 @@ mod screenshot_session_integration_tests {
             let dto = ScreenshotDto {
                 folder_name: "Mathematics".to_string(),
                 course_name: "Calculus".to_string(),
-                subject_name: "Derivatives".to_string(),
+                set_name: "Derivatives".to_string(),
                 problem_name: format!("Problem {}", i),
                 base64_data: format!("test_base64_data_{}", i),
             };
@@ -124,12 +124,12 @@ mod screenshot_session_integration_tests {
                 .await
                 .expect("Failed to save screenshot");
 
-            // All problems should be in the same subject
-            assert_eq!(problem.subject_id, subject.id);
+            // All problems should be in the same set
+            assert_eq!(problem.set_id, set.id);
         }
 
-        // Verify all problems are in the same subject
-        let problems = services::get_problems_by_subject(&db, subject.id)
+        // Verify all problems are in the same set
+        let problems = services::get_problems_by_set(&db, set.id)
             .await
             .expect("Failed to get problems");
 
@@ -153,9 +153,9 @@ mod screenshot_session_integration_tests {
             .await
             .expect("Failed to create course");
 
-        let subject1 = services::find_or_create_subject(&db, course1.id, "Sorting".to_string())
+        let set1 = services::find_or_create_set(&db, course1.id, "Sorting".to_string())
             .await
-            .expect("Failed to create subject");
+            .expect("Failed to create set");
 
         let folder2 = services::find_or_create_folder(&db, user_id, "Mathematics".to_string())
             .await
@@ -165,9 +165,9 @@ mod screenshot_session_integration_tests {
             .await
             .expect("Failed to create course");
 
-        let subject2 = services::find_or_create_subject(&db, course2.id, "Integrals".to_string())
+        let set2 = services::find_or_create_set(&db, course2.id, "Integrals".to_string())
             .await
-            .expect("Failed to create subject");
+            .expect("Failed to create set");
 
         // Create two sessions
         let mut session_manager = SessionManager::new();
@@ -175,7 +175,7 @@ mod screenshot_session_integration_tests {
             "CS Session".to_string(),
             folder1.id,
             course1.id,
-            subject1.id,
+            set1.id,
             true,
         );
 
@@ -183,7 +183,7 @@ mod screenshot_session_integration_tests {
             "Math Session".to_string(),
             folder2.id,
             course2.id,
-            subject2.id,
+            set2.id,
             false,
         );
 
@@ -191,7 +191,7 @@ mod screenshot_session_integration_tests {
         let dto1 = ScreenshotDto {
             folder_name: "Computer Science".to_string(),
             course_name: "Algorithms".to_string(),
-            subject_name: "Sorting".to_string(),
+            set_name: "Sorting".to_string(),
             problem_name: "QuickSort".to_string(),
             base64_data: "test_data_1".to_string(),
         };
@@ -200,7 +200,7 @@ mod screenshot_session_integration_tests {
             .await
             .expect("Failed to save screenshot");
 
-        assert_eq!(problem1.subject_id, subject1.id);
+        assert_eq!(problem1.set_id, set1.id);
 
         // Switch to session2
         session_manager.start_session(session2.id).unwrap();
@@ -209,7 +209,7 @@ mod screenshot_session_integration_tests {
         let dto2 = ScreenshotDto {
             folder_name: "Mathematics".to_string(),
             course_name: "Calculus".to_string(),
-            subject_name: "Integrals".to_string(),
+            set_name: "Integrals".to_string(),
             problem_name: "Integration by Parts".to_string(),
             base64_data: "test_data_2".to_string(),
         };
@@ -218,10 +218,10 @@ mod screenshot_session_integration_tests {
             .await
             .expect("Failed to save screenshot");
 
-        assert_eq!(problem2.subject_id, subject2.id);
+        assert_eq!(problem2.set_id, set2.id);
 
-        // Verify problems are in different subjects
-        assert_ne!(problem1.subject_id, problem2.subject_id);
+        // Verify problems are in different sets
+        assert_ne!(problem1.set_id, problem2.set_id);
     }
 
     #[tokio::test]
@@ -273,15 +273,15 @@ mod screenshot_session_integration_tests {
             .await
             .expect("Failed to create course");
 
-        let subject = services::find_or_create_subject(&db, course.id, "Dynamics".to_string())
+        let set = services::find_or_create_set(&db, course.id, "Dynamics".to_string())
             .await
-            .expect("Failed to create subject");
+            .expect("Failed to create set");
 
         // Simulate screenshot save with inline IDs (not using active session)
         let dto = ScreenshotDto {
             folder_name: folder.name.clone(),
             course_name: course.name.clone(),
-            subject_name: subject.name.clone(),
+            set_name: set.name.clone(),
             problem_name: "Newton's Laws".to_string(),
             base64_data: "test_data".to_string(),
         };
@@ -292,8 +292,8 @@ mod screenshot_session_integration_tests {
             .await
             .expect("Failed to save screenshot");
 
-        // Verify screenshot was saved to correct subject
-        assert_eq!(problem.subject_id, subject.id);
+        // Verify screenshot was saved to correct set
+        assert_eq!(problem.set_id, set.id);
         assert_eq!(problem.title, "Newton's Laws");
     }
 
@@ -314,9 +314,9 @@ mod screenshot_session_integration_tests {
             .await
             .expect("Failed to create course");
 
-        let subject = services::find_or_create_subject(&db, course.id, "Reactions".to_string())
+        let set = services::find_or_create_set(&db, course.id, "Reactions".to_string())
             .await
-            .expect("Failed to create subject");
+            .expect("Failed to create set");
 
         // Create and activate session
         let mut session_manager = SessionManager::new();
@@ -324,7 +324,7 @@ mod screenshot_session_integration_tests {
             "Chemistry Session".to_string(),
             folder.id,
             course.id,
-            subject.id,
+            set.id,
             true, // Start immediately
         );
 
@@ -334,7 +334,7 @@ mod screenshot_session_integration_tests {
         let dto = ScreenshotDto {
             folder_name: folder.name.clone(),
             course_name: course.name.clone(),
-            subject_name: subject.name.clone(),
+            set_name: set.name.clone(),
             problem_name: "Substitution Reaction".to_string(),
             base64_data: "test_data".to_string(),
         };
@@ -345,9 +345,9 @@ mod screenshot_session_integration_tests {
             .await
             .expect("Failed to save screenshot");
 
-        // Verify screenshot was saved to session's subject
-        assert_eq!(problem.subject_id, active_session.subject_id);
-        assert_eq!(problem.subject_id, subject.id);
+        // Verify screenshot was saved to session's set
+        assert_eq!(problem.set_id, active_session.set_id);
+        assert_eq!(problem.set_id, set.id);
     }
 
     #[tokio::test]
@@ -375,15 +375,15 @@ mod screenshot_session_integration_tests {
     }
 
     #[tokio::test]
-    async fn test_database_lookup_failure_subject_not_found() {
+    async fn test_database_lookup_failure_set_not_found() {
         let db = setup_test_db().await;
 
-        // Try to get non-existent subject
-        let nonexistent_subject_id = uuid::Uuid::new_v4();
-        let result = services::get_subject_by_id(&db, nonexistent_subject_id).await;
+        // Try to get non-existent set
+        let nonexistent_set_id = uuid::Uuid::new_v4();
+        let result = services::get_set_by_id(&db, nonexistent_set_id).await;
 
         assert!(result.is_ok(), "Query should succeed");
-        assert!(result.unwrap().is_none(), "Should return None for nonexistent subject");
+        assert!(result.unwrap().is_none(), "Should return None for nonexistent set");
     }
 
     #[tokio::test]
@@ -417,13 +417,13 @@ mod screenshot_session_integration_tests {
         let mut session_manager = SessionManager::new();
         let folder_id = uuid::Uuid::new_v4();
         let course_id = uuid::Uuid::new_v4();
-        let subject_id = uuid::Uuid::new_v4();
+        let set_id = uuid::Uuid::new_v4();
 
         session_manager.create_session(
             "Test Session".to_string(),
             folder_id,
             course_id,
-            subject_id,
+            set_id,
             true, // Start immediately
         );
 
@@ -448,16 +448,16 @@ mod screenshot_session_integration_tests {
             .await
             .expect("Failed to create course");
 
-        let subject = services::find_or_create_subject(&db, course.id, "Mitosis".to_string())
+        let set = services::find_or_create_set(&db, course.id, "Mitosis".to_string())
             .await
-            .expect("Failed to create subject");
+            .expect("Failed to create set");
 
         let mut session_manager = SessionManager::new();
         session_manager.create_session(
             "Biology Session".to_string(),
             folder.id,
             course.id,
-            subject.id,
+            set.id,
             true,
         );
 
@@ -466,7 +466,7 @@ mod screenshot_session_integration_tests {
             let dto = ScreenshotDto {
                 folder_name: folder.name.clone(),
                 course_name: course.name.clone(),
-                subject_name: subject.name.clone(),
+                set_name: set.name.clone(),
                 problem_name: format!("Phase {}", i),
                 base64_data: format!("test_data_{}", i),
             };
@@ -477,12 +477,12 @@ mod screenshot_session_integration_tests {
                 .await
                 .expect("Failed to save screenshot");
 
-            // All should be in the same subject
-            assert_eq!(problem.subject_id, subject.id);
+            // All should be in the same set
+            assert_eq!(problem.set_id, set.id);
         }
 
         // Verify all problems were created
-        let problems = services::get_problems_by_subject(&db, subject.id)
+        let problems = services::get_problems_by_set(&db, set.id)
             .await
             .expect("Failed to get problems");
 
@@ -506,9 +506,9 @@ mod screenshot_session_integration_tests {
             .await
             .expect("Failed to create course");
 
-        let subject1 = services::find_or_create_subject(&db, course1.id, "Linear".to_string())
+        let set1 = services::find_or_create_set(&db, course1.id, "Linear".to_string())
             .await
-            .expect("Failed to create subject");
+            .expect("Failed to create set");
 
         let folder2 = services::find_or_create_folder(&db, user_id, "Physics".to_string())
             .await
@@ -518,9 +518,9 @@ mod screenshot_session_integration_tests {
             .await
             .expect("Failed to create course");
 
-        let subject2 = services::find_or_create_subject(&db, course2.id, "Entanglement".to_string())
+        let set2 = services::find_or_create_set(&db, course2.id, "Entanglement".to_string())
             .await
-            .expect("Failed to create subject");
+            .expect("Failed to create set");
 
         // Create two sessions
         let mut session_manager = SessionManager::new();
@@ -528,7 +528,7 @@ mod screenshot_session_integration_tests {
             "Math Session".to_string(),
             folder1.id,
             course1.id,
-            subject1.id,
+            set1.id,
             true, // Start immediately
         );
 
@@ -536,7 +536,7 @@ mod screenshot_session_integration_tests {
             "Physics Session".to_string(),
             folder2.id,
             course2.id,
-            subject2.id,
+            set2.id,
             false,
         );
 
@@ -544,7 +544,7 @@ mod screenshot_session_integration_tests {
         let dto1 = ScreenshotDto {
             folder_name: folder1.name.clone(),
             course_name: course1.name.clone(),
-            subject_name: subject1.name.clone(),
+            set_name: set1.name.clone(),
             problem_name: "Matrix Problem".to_string(),
             base64_data: "test_data_1".to_string(),
         };
@@ -553,7 +553,7 @@ mod screenshot_session_integration_tests {
             .await
             .expect("Failed to save screenshot");
 
-        assert_eq!(problem1.subject_id, subject1.id);
+        assert_eq!(problem1.set_id, set1.id);
 
         // Switch to session 2
         session_manager.end_session();
@@ -565,7 +565,7 @@ mod screenshot_session_integration_tests {
         let dto2 = ScreenshotDto {
             folder_name: folder2.name.clone(),
             course_name: course2.name.clone(),
-            subject_name: subject2.name.clone(),
+            set_name: set2.name.clone(),
             problem_name: "Bell State".to_string(),
             base64_data: "test_data_2".to_string(),
         };
@@ -574,12 +574,12 @@ mod screenshot_session_integration_tests {
             .await
             .expect("Failed to save screenshot");
 
-        assert_eq!(problem2.subject_id, subject2.id);
+        assert_eq!(problem2.set_id, set2.id);
 
-        // Verify screenshots are in different subjects
+        // Verify screenshots are in different sets
         assert_ne!(
-            problem1.subject_id, problem2.subject_id,
-            "Screenshots should be in different subjects"
+            problem1.set_id, problem2.set_id,
+            "Screenshots should be in different sets"
         );
     }
 }
