@@ -403,10 +403,10 @@ export function SessionModal() {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold">Session Management</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Session Management</h2>
           <button
             onClick={() => setIsOpen(false)}
-            className="text-gray-500 hover:text-gray-700"
+            className="text-gray-700 hover:text-gray-900"
           >
             ✕
           </button>
@@ -434,9 +434,9 @@ export function SessionModal() {
         {!showNewSessionForm ? (
           <>
             <div className="mb-4">
-              <h3 className="text-lg font-semibold mb-2">Saved Sessions</h3>
+              <h3 className="text-lg font-semibold mb-2 text-gray-900">Saved Sessions</h3>
               {sessions.length === 0 ? (
-                <p className="text-gray-500">No saved sessions</p>
+                <p className="text-gray-700">No saved sessions</p>
               ) : (
                 <div className="space-y-2">
                   {sessions.map((session) => (
@@ -445,8 +445,8 @@ export function SessionModal() {
                       className="border rounded p-3 flex justify-between items-center"
                     >
                       <div>
-                        <p className="font-medium">{session.name}</p>
-                        <p className="text-sm text-gray-600">
+                        <p className="font-medium text-gray-900">{session.name}</p>
+                        <p className="text-sm text-gray-700">
                           {session.folder_name} → {session.course_name} →{" "}
                           {session.subject_name}
                         </p>
@@ -482,13 +482,13 @@ export function SessionModal() {
           </>
         ) : (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Create New Session</h3>
-            <p className="text-sm text-gray-600">
+            <h3 className="text-lg font-semibold text-gray-900">Create New Session</h3>
+            <p className="text-sm text-gray-700">
               Session name will be auto-generated from folder/course/subject
             </p>
 
             <div>
-              <label htmlFor="session-folder" className="block text-sm font-medium mb-1">
+              <label htmlFor="session-folder" className="block text-sm font-medium mb-1 text-gray-900">
                 Folder
               </label>
               {!isCreatingNewFolder ? (
@@ -496,7 +496,7 @@ export function SessionModal() {
                   id="session-folder"
                   value={selectedFolderId || ""}
                   onChange={(e) => handleFolderChange(e.target.value)}
-                  className="w-full border rounded px-3 py-2"
+                  className="w-full border rounded px-3 py-2 text-gray-900 bg-white"
                 >
                   <option value="">Select a folder...</option>
                   {folders.map((folder) => (
@@ -513,7 +513,7 @@ export function SessionModal() {
                     type="text"
                     value={newFolderName}
                     onChange={(e) => setNewFolderName(e.target.value)}
-                    className="w-full border rounded px-3 py-2"
+                    className="w-full border rounded px-3 py-2 text-gray-900 bg-white"
                     placeholder="Enter new folder name"
                     autoFocus
                   />
@@ -523,7 +523,7 @@ export function SessionModal() {
                       setIsCreatingNewFolder(false);
                       setNewFolderName("");
                     }}
-                    className="text-sm text-gray-600 hover:text-gray-800"
+                    className="text-sm text-gray-700 hover:text-gray-900"
                   >
                     ← Back to folder selection
                   </button>
@@ -532,7 +532,7 @@ export function SessionModal() {
             </div>
 
             <div>
-              <label htmlFor="session-course" className="block text-sm font-medium mb-1">
+              <label htmlFor="session-course" className="block text-sm font-medium mb-1 text-gray-900">
                 Course
               </label>
               {!isCreatingNewCourse ? (
@@ -540,7 +540,7 @@ export function SessionModal() {
                   id="session-course"
                   value={selectedCourseId || ""}
                   onChange={(e) => handleCourseChange(e.target.value)}
-                  className="w-full border rounded px-3 py-2"
+                  className="w-full border rounded px-3 py-2 text-gray-900 bg-white"
                   disabled={!selectedFolderId && !isCreatingNewFolder}
                 >
                   <option value="">Select a course...</option>
@@ -558,7 +558,7 @@ export function SessionModal() {
                     type="text"
                     value={newCourseName}
                     onChange={(e) => setNewCourseName(e.target.value)}
-                    className="w-full border rounded px-3 py-2"
+                    className="w-full border rounded px-3 py-2 text-gray-900 bg-white"
                     placeholder="Enter new course name"
                     autoFocus
                   />
@@ -568,7 +568,7 @@ export function SessionModal() {
                       setIsCreatingNewCourse(false);
                       setNewCourseName("");
                     }}
-                    className="text-sm text-gray-600 hover:text-gray-800"
+                    className="text-sm text-gray-700 hover:text-gray-900"
                   >
                     ← Back to course selection
                   </button>
@@ -577,7 +577,7 @@ export function SessionModal() {
             </div>
 
             <div>
-              <label htmlFor="session-subject" className="block text-sm font-medium mb-1">
+              <label htmlFor="session-subject" className="block text-sm font-medium mb-1 text-gray-900">
                 Subject
               </label>
               {!isCreatingNewSubject ? (
@@ -585,7 +585,7 @@ export function SessionModal() {
                   id="session-subject"
                   value={selectedSubjectId || ""}
                   onChange={(e) => handleSubjectChange(e.target.value)}
-                  className="w-full border rounded px-3 py-2"
+                  className="w-full border rounded px-3 py-2 text-gray-900 bg-white"
                   disabled={!selectedCourseId && !isCreatingNewCourse}
                 >
                   <option value="">Select a subject...</option>
@@ -603,7 +603,7 @@ export function SessionModal() {
                     type="text"
                     value={newSubjectName}
                     onChange={(e) => setNewSubjectName(e.target.value)}
-                    className="w-full border rounded px-3 py-2"
+                    className="w-full border rounded px-3 py-2 text-gray-900 bg-white"
                     placeholder="Enter new subject name"
                     autoFocus
                   />
@@ -613,7 +613,7 @@ export function SessionModal() {
                       setIsCreatingNewSubject(false);
                       setNewSubjectName("");
                     }}
-                    className="text-sm text-gray-600 hover:text-gray-800"
+                    className="text-sm text-gray-700 hover:text-gray-900"
                   >
                     ← Back to subject selection
                   </button>
