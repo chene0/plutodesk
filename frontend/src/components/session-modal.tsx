@@ -9,10 +9,10 @@ interface SessionResponse {
   name: string;
   folder_id: string;
   course_id: string;
-  subject_id: string;
+  set_id: string;
   folder_name: string;
   course_name: string;
-  subject_name: string;
+  set_name: string;
   created_at: string;
   last_used: string;
 }
@@ -27,7 +27,7 @@ interface Course {
   name: string;
 }
 
-interface Subject {
+interface Set {
   id: string;
   name: string;
 }
@@ -41,24 +41,24 @@ export function SessionModal() {
   // New session form state
   const [folderInput, setFolderInput] = useState("");
   const [courseInput, setCourseInput] = useState("");
-  const [subjectInput, setSubjectInput] = useState("");
+  const [setInput, setSetInput] = useState("");
 
   // Dropdowns data
   const [folders, setFolders] = useState<Folder[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [sets, setSets] = useState<Set[]>([]);
 
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
+  const [selectedSetId, setSelectedSetId] = useState<string | null>(null);
 
   // "Create new" mode state
   const [isCreatingNewFolder, setIsCreatingNewFolder] = useState(false);
   const [isCreatingNewCourse, setIsCreatingNewCourse] = useState(false);
-  const [isCreatingNewSubject, setIsCreatingNewSubject] = useState(false);
+  const [isCreatingNewSet, setIsCreatingNewSet] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [newCourseName, setNewCourseName] = useState("");
-  const [newSubjectName, setNewSubjectName] = useState("");
+  const [newSetName, setNewSetName] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -155,15 +155,15 @@ export function SessionModal() {
       loadCourses(selectedFolderId);
     } else {
       setCourses([]);
-      setSubjects([]);
+      setSets([]);
     }
   }, [selectedFolderId]);
 
   useEffect(() => {
     if (selectedCourseId) {
-      loadSubjects(selectedCourseId);
+      loadSets(selectedCourseId);
     } else {
-      setSubjects([]);
+      setSets([]);
     }
   }, [selectedCourseId]);
 
@@ -210,15 +210,15 @@ export function SessionModal() {
     }
   };
 
-  const loadSubjects = async (courseId: string) => {
+  const loadSets = async (courseId: string) => {
     try {
-      const result = await invoke<string>("get_subjects_by_course", {
+      const result = await invoke<string>("get_sets_by_course", {
         courseId,
       });
-      const parsed = JSON.parse(result) as Subject[];
-      setSubjects(parsed);
+      const parsed = JSON.parse(result) as Set[];
+      setSets(parsed);
     } catch (err) {
-      console.error("Failed to load subjects:", err);
+      console.error("Failed to load sets:", err);
     }
   };
 
@@ -278,16 +278,16 @@ export function SessionModal() {
     setShowNewSessionForm(false);
     setFolderInput("");
     setCourseInput("");
-    setSubjectInput("");
+    setSetInput("");
     setIsCreatingNewFolder(false);
     setIsCreatingNewCourse(false);
-    setIsCreatingNewSubject(false);
+    setIsCreatingNewSet(false);
     setNewFolderName("");
     setNewCourseName("");
-    setNewSubjectName("");
+    setNewSetName("");
     setSelectedFolderId(null);
     setSelectedCourseId(null);
-    setSelectedSubjectId(null);
+    setSelectedSetId(null);
     setError(null);
   };
 
@@ -295,11 +295,11 @@ export function SessionModal() {
     // Determine final names (either from dropdown selection or new input)
     const finalFolderName = isCreatingNewFolder ? newFolderName : folderInput;
     const finalCourseName = isCreatingNewCourse ? newCourseName : courseInput;
-    const finalSubjectName = isCreatingNewSubject ? newSubjectName : subjectInput;
+    const finalSetName = isCreatingNewSet ? newSetName : setInput;
 
     // Validate all fields are filled
-    if (!finalFolderName.trim() || !finalCourseName.trim() || !finalSubjectName.trim()) {
-      setError("Folder, course, and subject are required");
+    if (!finalFolderName.trim() || !finalCourseName.trim() || !finalSetName.trim()) {
+      setError("Folder, course, and set are required");
       return;
     }
 
@@ -310,7 +310,7 @@ export function SessionModal() {
     if (isCreatingNewCourse && !validateNewItemName(newCourseName, courses, "Course")) {
       return;
     }
-    if (isCreatingNewSubject && !validateNewItemName(newSubjectName, subjects, "Subject")) {
+    if (isCreatingNewSet && !validateNewItemName(newSetName, sets, "Set")) {
       return;
     }
 
@@ -321,7 +321,7 @@ export function SessionModal() {
         request: {
           folder_name: finalFolderName,
           course_name: finalCourseName,
-          subject_name: finalSubjectName,
+          set_name: finalSetName,
         },
       });
       await loadSessions();
@@ -343,10 +343,10 @@ export function SessionModal() {
       setSelectedFolderId(null);
       setCourseInput("");
       setSelectedCourseId(null);
-      setSubjectInput("");
-      setSelectedSubjectId(null);
+      setSetInput("");
+      setSelectedSetId(null);
       setCourses([]);
-      setSubjects([]);
+      setSets([]);
     } else {
       setIsCreatingNewFolder(false);
       const folder = folders.find((f) => f.id === value);
@@ -355,9 +355,9 @@ export function SessionModal() {
         setSelectedFolderId(folder.id);
         setCourseInput("");
         setSelectedCourseId(null);
-        setSubjectInput("");
-        setSelectedSubjectId(null);
-        setSubjects([]);
+        setSetInput("");
+        setSelectedSetId(null);
+        setSets([]);
       }
     }
   };
@@ -367,32 +367,32 @@ export function SessionModal() {
       setIsCreatingNewCourse(true);
       setCourseInput("");
       setSelectedCourseId(null);
-      setSubjectInput("");
-      setSelectedSubjectId(null);
-      setSubjects([]);
+      setSetInput("");
+      setSelectedSetId(null);
+      setSets([]);
     } else {
       setIsCreatingNewCourse(false);
       const course = courses.find((c) => c.id === value);
       if (course) {
         setCourseInput(course.name);
         setSelectedCourseId(course.id);
-        setSubjectInput("");
-        setSelectedSubjectId(null);
+        setSetInput("");
+        setSelectedSetId(null);
       }
     }
   };
 
-  const handleSubjectChange = (value: string) => {
+  const handleSetChange = (value: string) => {
     if (value === "CREATE_NEW") {
-      setIsCreatingNewSubject(true);
-      setSubjectInput("");
-      setSelectedSubjectId(null);
+      setIsCreatingNewSet(true);
+      setSetInput("");
+      setSelectedSetId(null);
     } else {
-      setIsCreatingNewSubject(false);
-      const subject = subjects.find((s) => s.id === value);
-      if (subject) {
-        setSubjectInput(subject.name);
-        setSelectedSubjectId(subject.id);
+      setIsCreatingNewSet(false);
+      const set = sets.find((s) => s.id === value);
+      if (set) {
+        setSetInput(set.name);
+        setSelectedSetId(set.id);
       }
     }
   };
@@ -403,10 +403,10 @@ export function SessionModal() {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold">Session Management</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Session Management</h2>
           <button
             onClick={() => setIsOpen(false)}
-            className="text-gray-500 hover:text-gray-700"
+            className="text-gray-700 hover:text-gray-900"
           >
             ✕
           </button>
@@ -426,7 +426,7 @@ export function SessionModal() {
             </p>
             <p className="text-sm text-blue-600">
               {activeSession.folder_name} → {activeSession.course_name} →{" "}
-              {activeSession.subject_name}
+              {activeSession.set_name}
             </p>
           </div>
         )}
@@ -434,9 +434,9 @@ export function SessionModal() {
         {!showNewSessionForm ? (
           <>
             <div className="mb-4">
-              <h3 className="text-lg font-semibold mb-2">Saved Sessions</h3>
+              <h3 className="text-lg font-semibold mb-2 text-gray-900">Saved Sessions</h3>
               {sessions.length === 0 ? (
-                <p className="text-gray-500">No saved sessions</p>
+                <p className="text-gray-700">No saved sessions</p>
               ) : (
                 <div className="space-y-2">
                   {sessions.map((session) => (
@@ -445,10 +445,10 @@ export function SessionModal() {
                       className="border rounded p-3 flex justify-between items-center"
                     >
                       <div>
-                        <p className="font-medium">{session.name}</p>
-                        <p className="text-sm text-gray-600">
+                        <p className="font-medium text-gray-900">{session.name}</p>
+                        <p className="text-sm text-gray-700">
                           {session.folder_name} → {session.course_name} →{" "}
-                          {session.subject_name}
+                          {session.set_name}
                         </p>
                       </div>
                       <div className="flex gap-2">
@@ -482,13 +482,13 @@ export function SessionModal() {
           </>
         ) : (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Create New Session</h3>
-            <p className="text-sm text-gray-600">
-              Session name will be auto-generated from folder/course/subject
+            <h3 className="text-lg font-semibold text-gray-900">Create New Session</h3>
+            <p className="text-sm text-gray-700">
+              Session name will be auto-generated from folder/course/set
             </p>
 
             <div>
-              <label htmlFor="session-folder" className="block text-sm font-medium mb-1">
+              <label htmlFor="session-folder" className="block text-sm font-medium mb-1 text-gray-900">
                 Folder
               </label>
               {!isCreatingNewFolder ? (
@@ -496,7 +496,7 @@ export function SessionModal() {
                   id="session-folder"
                   value={selectedFolderId || ""}
                   onChange={(e) => handleFolderChange(e.target.value)}
-                  className="w-full border rounded px-3 py-2"
+                  className="w-full border rounded px-3 py-2 text-gray-900 bg-white"
                 >
                   <option value="">Select a folder...</option>
                   {folders.map((folder) => (
@@ -513,7 +513,7 @@ export function SessionModal() {
                     type="text"
                     value={newFolderName}
                     onChange={(e) => setNewFolderName(e.target.value)}
-                    className="w-full border rounded px-3 py-2"
+                    className="w-full border rounded px-3 py-2 text-gray-900 bg-white"
                     placeholder="Enter new folder name"
                     autoFocus
                   />
@@ -523,7 +523,7 @@ export function SessionModal() {
                       setIsCreatingNewFolder(false);
                       setNewFolderName("");
                     }}
-                    className="text-sm text-gray-600 hover:text-gray-800"
+                    className="text-sm text-gray-700 hover:text-gray-900"
                   >
                     ← Back to folder selection
                   </button>
@@ -532,7 +532,7 @@ export function SessionModal() {
             </div>
 
             <div>
-              <label htmlFor="session-course" className="block text-sm font-medium mb-1">
+              <label htmlFor="session-course" className="block text-sm font-medium mb-1 text-gray-900">
                 Course
               </label>
               {!isCreatingNewCourse ? (
@@ -540,7 +540,7 @@ export function SessionModal() {
                   id="session-course"
                   value={selectedCourseId || ""}
                   onChange={(e) => handleCourseChange(e.target.value)}
-                  className="w-full border rounded px-3 py-2"
+                  className="w-full border rounded px-3 py-2 text-gray-900 bg-white"
                   disabled={!selectedFolderId && !isCreatingNewFolder}
                 >
                   <option value="">Select a course...</option>
@@ -558,7 +558,7 @@ export function SessionModal() {
                     type="text"
                     value={newCourseName}
                     onChange={(e) => setNewCourseName(e.target.value)}
-                    className="w-full border rounded px-3 py-2"
+                    className="w-full border rounded px-3 py-2 text-gray-900 bg-white"
                     placeholder="Enter new course name"
                     autoFocus
                   />
@@ -568,7 +568,7 @@ export function SessionModal() {
                       setIsCreatingNewCourse(false);
                       setNewCourseName("");
                     }}
-                    className="text-sm text-gray-600 hover:text-gray-800"
+                    className="text-sm text-gray-700 hover:text-gray-900"
                   >
                     ← Back to course selection
                   </button>
@@ -577,45 +577,45 @@ export function SessionModal() {
             </div>
 
             <div>
-              <label htmlFor="session-subject" className="block text-sm font-medium mb-1">
-                Subject
+              <label htmlFor="session-set" className="block text-sm font-medium mb-1 text-gray-900">
+                Set
               </label>
-              {!isCreatingNewSubject ? (
+              {!isCreatingNewSet ? (
                 <select
-                  id="session-subject"
-                  value={selectedSubjectId || ""}
-                  onChange={(e) => handleSubjectChange(e.target.value)}
-                  className="w-full border rounded px-3 py-2"
+                  id="session-set"
+                  value={selectedSetId || ""}
+                  onChange={(e) => handleSetChange(e.target.value)}
+                  className="w-full border rounded px-3 py-2 text-gray-900 bg-white"
                   disabled={!selectedCourseId && !isCreatingNewCourse}
                 >
-                  <option value="">Select a subject...</option>
-                  {subjects.map((subject) => (
-                    <option key={subject.id} value={subject.id}>
-                      {subject.name}
+                  <option value="">Select a set...</option>
+                  {sets.map((set) => (
+                    <option key={set.id} value={set.id}>
+                      {set.name}
                     </option>
                   ))}
-                  <option value="CREATE_NEW">+ Create new subject...</option>
+                  <option value="CREATE_NEW">+ Create new set...</option>
                 </select>
               ) : (
                 <div className="space-y-2">
                   <input
-                    id="session-subject"
+                    id="session-set"
                     type="text"
-                    value={newSubjectName}
-                    onChange={(e) => setNewSubjectName(e.target.value)}
-                    className="w-full border rounded px-3 py-2"
-                    placeholder="Enter new subject name"
+                    value={newSetName}
+                    onChange={(e) => setNewSetName(e.target.value)}
+                    className="w-full border rounded px-3 py-2 text-gray-900 bg-white"
+                    placeholder="Enter new set name"
                     autoFocus
                   />
                   <button
                     type="button"
                     onClick={() => {
-                      setIsCreatingNewSubject(false);
-                      setNewSubjectName("");
+                      setIsCreatingNewSet(false);
+                      setNewSetName("");
                     }}
-                    className="text-sm text-gray-600 hover:text-gray-800"
+                    className="text-sm text-gray-700 hover:text-gray-900"
                   >
-                    ← Back to subject selection
+                    ← Back to set selection
                   </button>
                 </div>
               )}

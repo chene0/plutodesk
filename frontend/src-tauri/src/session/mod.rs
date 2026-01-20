@@ -5,14 +5,14 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
-/// Represents an active study session with folder/course/subject context
+/// Represents an active study session with folder/course/set context
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct SessionState {
     pub id: Uuid,
     pub name: String,
     pub folder_id: Uuid,
     pub course_id: Uuid,
-    pub subject_id: Uuid,
+    pub set_id: Uuid,
     #[serde(with = "naive_datetime_format")]
     pub created_at: NaiveDateTime,
     #[serde(with = "naive_datetime_format")]
@@ -48,7 +48,7 @@ impl SessionState {
         name: String,
         folder_id: Uuid,
         course_id: Uuid,
-        subject_id: Uuid,
+        set_id: Uuid,
     ) -> Self {
         let now = Utc::now().naive_utc();
         Self {
@@ -56,7 +56,7 @@ impl SessionState {
             name,
             folder_id,
             course_id,
-            subject_id,
+            set_id,
             created_at: now,
             last_used: now,
         }
@@ -150,10 +150,10 @@ impl SessionManager {
         name: String,
         folder_id: Uuid,
         course_id: Uuid,
-        subject_id: Uuid,
+        set_id: Uuid,
         start_immediately: bool,
     ) -> SessionState {
-        let session = SessionState::new(name, folder_id, course_id, subject_id);
+        let session = SessionState::new(name, folder_id, course_id, set_id);
         let session_id = session.id;
         self.sessions.push(session.clone());
 
@@ -194,10 +194,10 @@ impl SessionManager {
         self.sessions.iter().find(|s| s.id == session_id)
     }
 
-    /// Check if a session with the given folder/course/subject combination already exists
-    pub fn session_exists_for_context(&self, folder_id: Uuid, course_id: Uuid, subject_id: Uuid) -> bool {
+    /// Check if a session with the given folder/course/set combination already exists
+    pub fn session_exists_for_context(&self, folder_id: Uuid, course_id: Uuid, set_id: Uuid) -> bool {
         self.sessions.iter().any(|s| {
-            s.folder_id == folder_id && s.course_id == course_id && s.subject_id == subject_id
+            s.folder_id == folder_id && s.course_id == course_id && s.set_id == set_id
         })
     }
 }
@@ -216,13 +216,13 @@ mod unit_tests {
         let mut manager = SessionManager::new();
         let folder_id = Uuid::new_v4();
         let course_id = Uuid::new_v4();
-        let subject_id = Uuid::new_v4();
+        let set_id = Uuid::new_v4();
 
         let session = manager.create_session(
             "Test Session".to_string(),
             folder_id,
             course_id,
-            subject_id,
+            set_id,
             false,
         );
 
@@ -236,13 +236,13 @@ mod unit_tests {
         let mut manager = SessionManager::new();
         let folder_id = Uuid::new_v4();
         let course_id = Uuid::new_v4();
-        let subject_id = Uuid::new_v4();
+        let set_id = Uuid::new_v4();
 
         let session = manager.create_session(
             "Test Session".to_string(),
             folder_id,
             course_id,
-            subject_id,
+            set_id,
             false,
         );
 
@@ -261,13 +261,13 @@ mod unit_tests {
         let mut manager = SessionManager::new();
         let folder_id = Uuid::new_v4();
         let course_id = Uuid::new_v4();
-        let subject_id = Uuid::new_v4();
+        let set_id = Uuid::new_v4();
 
         let session = manager.create_session(
             "Test Session".to_string(),
             folder_id,
             course_id,
-            subject_id,
+            set_id,
             true,
         );
 
@@ -288,21 +288,21 @@ mod unit_tests {
         let mut manager = SessionManager::new();
         let folder_id = Uuid::new_v4();
         let course_id = Uuid::new_v4();
-        let subject_id = Uuid::new_v4();
+        let set_id = Uuid::new_v4();
         let folder_id_2 = Uuid::new_v4();
 
         manager.create_session(
             "Test Session 1".to_string(),
             folder_id,
             course_id,
-            subject_id,
+            set_id,
             true,
         );
         manager.create_session(
             "Test Session 2".to_string(),
             folder_id_2,
             course_id,
-            subject_id,
+            set_id,
             false,
         );
 
@@ -324,26 +324,26 @@ mod unit_tests {
         let mut manager = SessionManager::new();
         let folder_id = Uuid::new_v4();
         let course_id = Uuid::new_v4();
-        let subject_id = Uuid::new_v4();
+        let set_id = Uuid::new_v4();
 
         // No session exists initially
-        assert!(!manager.session_exists_for_context(folder_id, course_id, subject_id));
+        assert!(!manager.session_exists_for_context(folder_id, course_id, set_id));
 
         // Create a session
         manager.create_session(
             "Test Session".to_string(),
             folder_id,
             course_id,
-            subject_id,
+            set_id,
             false,
         );
 
         // Session should now exist for this context
-        assert!(manager.session_exists_for_context(folder_id, course_id, subject_id));
+        assert!(manager.session_exists_for_context(folder_id, course_id, set_id));
 
         // Different context should not exist
         let different_folder_id = Uuid::new_v4();
-        assert!(!manager.session_exists_for_context(different_folder_id, course_id, subject_id));
+        assert!(!manager.session_exists_for_context(different_folder_id, course_id, set_id));
     }
 }
 

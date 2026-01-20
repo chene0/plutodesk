@@ -4,7 +4,7 @@ use tauri::State;
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct CreateSubjectRequest {
+pub struct CreateSetRequest {
     pub course_id: String,
     pub name: String,
     pub description: Option<String>,
@@ -12,7 +12,7 @@ pub struct CreateSubjectRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct UpdateSubjectRequest {
+pub struct UpdateSetRequest {
     pub id: String,
     pub name: Option<String>,
     pub description: Option<Option<String>>,
@@ -20,13 +20,13 @@ pub struct UpdateSubjectRequest {
 }
 
 #[tauri::command]
-pub async fn create_subject(
+pub async fn create_set(
     db: State<'_, Db>,
-    request: CreateSubjectRequest,
+    request: CreateSetRequest,
 ) -> Result<String, String> {
     let course_id = Uuid::parse_str(&request.course_id).map_err(|e| e.to_string())?;
 
-    let subject = services::create_subject(
+    let set = services::create_set(
         db.connection(),
         course_id,
         request.name,
@@ -36,44 +36,44 @@ pub async fn create_subject(
     .await
     .map_err(|e| e.to_string())?;
 
-    serde_json::to_string(&subject).map_err(|e| e.to_string())
+    serde_json::to_string(&set).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn get_subject(db: State<'_, Db>, id: String) -> Result<String, String> {
-    let subject_id = Uuid::parse_str(&id).map_err(|e| e.to_string())?;
+pub async fn get_set(db: State<'_, Db>, id: String) -> Result<String, String> {
+    let set_id = Uuid::parse_str(&id).map_err(|e| e.to_string())?;
 
-    let subject = services::get_subject_by_id(db.connection(), subject_id)
+    let set = services::get_set_by_id(db.connection(), set_id)
         .await
         .map_err(|e| e.to_string())?;
 
-    serde_json::to_string(&subject).map_err(|e| e.to_string())
+    serde_json::to_string(&set).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn get_subjects_by_course(
+pub async fn get_sets_by_course(
     db: State<'_, Db>,
     course_id: String,
 ) -> Result<String, String> {
     let course_uuid = Uuid::parse_str(&course_id).map_err(|e| e.to_string())?;
 
-    let subjects = services::get_subjects_by_course(db.connection(), course_uuid)
+    let sets = services::get_sets_by_course(db.connection(), course_uuid)
         .await
         .map_err(|e| e.to_string())?;
 
-    serde_json::to_string(&subjects).map_err(|e| e.to_string())
+    serde_json::to_string(&sets).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn update_subject(
+pub async fn update_set(
     db: State<'_, Db>,
-    request: UpdateSubjectRequest,
+    request: UpdateSetRequest,
 ) -> Result<String, String> {
-    let subject_id = Uuid::parse_str(&request.id).map_err(|e| e.to_string())?;
+    let set_id = Uuid::parse_str(&request.id).map_err(|e| e.to_string())?;
 
-    let subject = services::update_subject(
+    let set = services::update_set(
         db.connection(),
-        subject_id,
+        set_id,
         request.name,
         request.description,
         request.sort_order,
@@ -81,16 +81,16 @@ pub async fn update_subject(
     .await
     .map_err(|e| e.to_string())?;
 
-    serde_json::to_string(&subject).map_err(|e| e.to_string())
+    serde_json::to_string(&set).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn delete_subject(db: State<'_, Db>, id: String) -> Result<String, String> {
-    let subject_id = Uuid::parse_str(&id).map_err(|e| e.to_string())?;
+pub async fn delete_set(db: State<'_, Db>, id: String) -> Result<String, String> {
+    let set_id = Uuid::parse_str(&id).map_err(|e| e.to_string())?;
 
-    services::delete_subject(db.connection(), subject_id)
+    services::delete_set(db.connection(), set_id)
         .await
         .map_err(|e| e.to_string())?;
 
-    Ok("Subject deleted successfully".to_string())
+    Ok("Set deleted successfully".to_string())
 }

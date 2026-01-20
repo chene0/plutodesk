@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
-    pub subject_id: Uuid,
+    pub set_id: Uuid,
     pub title: String,
     pub description: Option<String>,
     pub image_path: Option<String>,
@@ -25,18 +25,18 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(
-        belongs_to = "super::subjects::Entity",
-        from = "Column::SubjectId",
-        to = "super::subjects::Column::Id"
+        belongs_to = "super::sets::Entity",
+        from = "Column::SetId",
+        to = "super::sets::Column::Id"
     )]
-    Subject,
+    Set,
     #[sea_orm(has_many = "super::problem_attempts::Entity")]
     ProblemAttempts,
 }
 
-impl Related<super::subjects::Entity> for Entity {
+impl Related<super::sets::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Subject.def()
+        Relation::Set.def()
     }
 }
 

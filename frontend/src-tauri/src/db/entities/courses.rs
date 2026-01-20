@@ -24,8 +24,8 @@ pub enum Relation {
         to = "super::folders::Column::Id"
     )]
     Folder,
-    #[sea_orm(has_many = "super::subjects::Entity")]
-    Subjects,
+    #[sea_orm(has_many = "super::sets::Entity")]
+    Sets,
 }
 
 impl Related<super::folders::Entity> for Entity {
@@ -34,9 +34,9 @@ impl Related<super::folders::Entity> for Entity {
     }
 }
 
-impl Related<super::subjects::Entity> for Entity {
+impl Related<super::sets::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Subjects.def()
+        Relation::Sets.def()
     }
 }
 

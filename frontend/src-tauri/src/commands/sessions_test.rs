@@ -39,7 +39,7 @@ mod session_commands_tests {
         let request = CreateSessionRequest {
             folder_name: "Computer Science".to_string(),
             course_name: "Algorithms".to_string(),
-            subject_name: "Dynamic Programming".to_string(),
+            set_name: "Dynamic Programming".to_string(),
         };
 
         // Manually execute the session creation logic (without AppHandle)
@@ -52,14 +52,14 @@ mod session_commands_tests {
                 .await
                 .expect("Failed to create course");
 
-        let subject =
-            services::find_or_create_subject(&db, course.id, request.subject_name.clone())
+        let set =
+            services::find_or_create_set(&db, course.id, request.set_name.clone())
                 .await
-                .expect("Failed to create subject");
+                .expect("Failed to create set");
 
         let session_name = format!(
             "{} / {} / {}",
-            request.folder_name, request.course_name, request.subject_name
+            request.folder_name, request.course_name, request.set_name
         );
 
         let mut session_manager = SessionManager::new();
@@ -67,7 +67,7 @@ mod session_commands_tests {
             session_name.clone(),
             folder.id,
             course.id,
-            subject.id,
+            set.id,
             true,
         );
 
@@ -75,7 +75,7 @@ mod session_commands_tests {
         assert_eq!(session.name, session_name);
         assert_eq!(session.folder_id, folder.id);
         assert_eq!(session.course_id, course.id);
-        assert_eq!(session.subject_id, subject.id);
+        assert_eq!(session.set_id, set.id);
 
         // Verify session is active
         assert_eq!(session_manager.active_session_id, Some(session.id));
@@ -99,10 +99,10 @@ mod session_commands_tests {
             .await
             .expect("Failed to create course");
 
-        let subject1 =
-            services::find_or_create_subject(&db, course1.id, "Derivatives".to_string())
+        let set1 =
+            services::find_or_create_set(&db, course1.id, "Derivatives".to_string())
                 .await
-                .expect("Failed to create subject");
+                .expect("Failed to create set");
 
         // Try to create again with same names
         let folder2 = services::find_or_create_folder(&db, user_id, "Mathematics".to_string())
@@ -113,15 +113,15 @@ mod session_commands_tests {
             .await
             .expect("Failed to find/create course");
 
-        let subject2 =
-            services::find_or_create_subject(&db, course2.id, "Derivatives".to_string())
+        let set2 =
+            services::find_or_create_set(&db, course2.id, "Derivatives".to_string())
                 .await
-                .expect("Failed to find/create subject");
+                .expect("Failed to find/create set");
 
         // Should have reused the same entities
         assert_eq!(folder1.id, folder2.id);
         assert_eq!(course1.id, course2.id);
-        assert_eq!(subject1.id, subject2.id);
+        assert_eq!(set1.id, set2.id);
     }
 
     #[tokio::test]
@@ -140,9 +140,9 @@ mod session_commands_tests {
             .await
             .expect("Failed to create course");
 
-        let subject = services::find_or_create_subject(&db, course.id, "Kinematics".to_string())
+        let set = services::find_or_create_set(&db, course.id, "Kinematics".to_string())
             .await
-            .expect("Failed to create subject");
+            .expect("Failed to create set");
 
         let mut session_manager = SessionManager::new();
 
@@ -151,16 +151,16 @@ mod session_commands_tests {
             "Physics / Mechanics / Kinematics".to_string(),
             folder.id,
             course.id,
-            subject.id,
+            set.id,
             true,
         );
 
         // Try to create duplicate session - should detect it exists
         let duplicate_exists =
-            session_manager.session_exists_for_context(folder.id, course.id, subject.id);
+            session_manager.session_exists_for_context(folder.id, course.id, set.id);
         assert!(
             duplicate_exists,
-            "Should detect duplicate session with same folder/course/subject"
+            "Should detect duplicate session with same folder/course/set"
         );
     }
 
@@ -169,13 +169,13 @@ mod session_commands_tests {
         let mut session_manager = SessionManager::new();
         let folder_id = uuid::Uuid::new_v4();
         let course_id = uuid::Uuid::new_v4();
-        let subject_id = uuid::Uuid::new_v4();
+        let set_id = uuid::Uuid::new_v4();
 
         let session = session_manager.create_session(
             "Test Session".to_string(),
             folder_id,
             course_id,
-            subject_id,
+            set_id,
             false,
         );
 
@@ -219,13 +219,13 @@ mod session_commands_tests {
         let mut session_manager = SessionManager::new();
         let folder_id = uuid::Uuid::new_v4();
         let course_id = uuid::Uuid::new_v4();
-        let subject_id = uuid::Uuid::new_v4();
+        let set_id = uuid::Uuid::new_v4();
 
         let session = session_manager.create_session(
             "Test Session".to_string(),
             folder_id,
             course_id,
-            subject_id,
+            set_id,
             true,
         );
 
@@ -248,13 +248,13 @@ mod session_commands_tests {
         let mut session_manager = SessionManager::new();
         let folder_id = uuid::Uuid::new_v4();
         let course_id = uuid::Uuid::new_v4();
-        let subject_id = uuid::Uuid::new_v4();
+        let set_id = uuid::Uuid::new_v4();
 
         let session = session_manager.create_session(
             "Test Session".to_string(),
             folder_id,
             course_id,
-            subject_id,
+            set_id,
             false,
         );
 
@@ -275,13 +275,13 @@ mod session_commands_tests {
         let mut session_manager = SessionManager::new();
         let folder_id = uuid::Uuid::new_v4();
         let course_id = uuid::Uuid::new_v4();
-        let subject_id = uuid::Uuid::new_v4();
+        let set_id = uuid::Uuid::new_v4();
 
         let session = session_manager.create_session(
             "Test Session".to_string(),
             folder_id,
             course_id,
-            subject_id,
+            set_id,
             true, // Start immediately
         );
 
@@ -324,12 +324,12 @@ mod session_commands_tests {
         for i in 1..=3 {
             let folder_id = uuid::Uuid::new_v4();
             let course_id = uuid::Uuid::new_v4();
-            let subject_id = uuid::Uuid::new_v4();
+            let set_id = uuid::Uuid::new_v4();
             session_manager.create_session(
                 format!("Session {}", i),
                 folder_id,
                 course_id,
-                subject_id,
+                set_id,
                 false,
             );
         }
@@ -352,13 +352,13 @@ mod session_commands_tests {
         let mut session_manager = SessionManager::new();
         let folder_id = uuid::Uuid::new_v4();
         let course_id = uuid::Uuid::new_v4();
-        let subject_id = uuid::Uuid::new_v4();
+        let set_id = uuid::Uuid::new_v4();
 
         let session = session_manager.create_session(
             "Active Session".to_string(),
             folder_id,
             course_id,
-            subject_id,
+            set_id,
             true,
         );
 
@@ -375,13 +375,13 @@ mod session_commands_tests {
         let mut session_manager = SessionManager::new();
         let folder_id = uuid::Uuid::new_v4();
         let course_id = uuid::Uuid::new_v4();
-        let subject_id = uuid::Uuid::new_v4();
+        let set_id = uuid::Uuid::new_v4();
 
         session_manager.create_session(
             "Persistent Session".to_string(),
             folder_id,
             course_id,
-            subject_id,
+            set_id,
             true,
         );
 
@@ -477,18 +477,18 @@ mod session_commands_tests {
             .await
             .expect("Failed to create course");
 
-        let subject =
-            services::find_or_create_subject(&db, course.id, "Test Subject".to_string())
+        let set =
+            services::find_or_create_set(&db, course.id, "Test Set".to_string())
                 .await
-                .expect("Failed to create subject");
+                .expect("Failed to create set");
 
         // Create session state
         let mut session_manager = SessionManager::new();
         let session = session_manager.create_session(
-            "Test Folder / Test Course / Test Subject".to_string(),
+            "Test Folder / Test Course / Test Set".to_string(),
             folder.id,
             course.id,
-            subject.id,
+            set.id,
             false,
         );
 
@@ -502,10 +502,10 @@ mod session_commands_tests {
         assert_eq!(response.name, session.name);
         assert_eq!(response.folder_name, "Test Folder");
         assert_eq!(response.course_name, "Test Course");
-        assert_eq!(response.subject_name, "Test Subject");
+        assert_eq!(response.set_name, "Test Set");
         assert_eq!(response.folder_id, folder.id.to_string());
         assert_eq!(response.course_id, course.id.to_string());
-        assert_eq!(response.subject_id, subject.id.to_string());
+        assert_eq!(response.set_id, set.id.to_string());
     }
 
     #[tokio::test]
@@ -524,27 +524,27 @@ mod session_commands_tests {
             .await
             .expect("Failed to create course");
 
-        let subject =
-            services::find_or_create_subject(&db, course.id, "Test Subject".to_string())
+        let set =
+            services::find_or_create_set(&db, course.id, "Test Set".to_string())
                 .await
-                .expect("Failed to create subject");
+                .expect("Failed to create set");
 
         let mut session_manager = SessionManager::new();
         let session = session_manager.create_session(
             "Test Session".to_string(),
             folder.id,
             course.id,
-            subject.id,
+            set.id,
             false,
         );
 
-        // Manually delete the subject from DB (simulate deleted entity)
-        use crate::db::entities::subjects;
+        // Manually delete the set from DB (simulate deleted entity)
+        use crate::db::entities::sets;
         use sea_orm::EntityTrait;
-        subjects::Entity::delete_by_id(subject.id)
+        sets::Entity::delete_by_id(set.id)
             .exec(&db)
             .await
-            .expect("Failed to delete subject");
+            .expect("Failed to delete set");
 
         // Try to create response - should fail
         let result = SessionResponse::from_session_state(&session, &db).await;
@@ -625,14 +625,14 @@ mod session_commands_tests {
         // Should be able to create new sessions after error recovery
         let folder_id = uuid::Uuid::new_v4();
         let course_id = uuid::Uuid::new_v4();
-        let subject_id = uuid::Uuid::new_v4();
+        let set_id = uuid::Uuid::new_v4();
         
         let mut manager = session_manager;
         manager.create_session(
             "Test Session".to_string(),
             folder_id,
             course_id,
-            subject_id,
+            set_id,
             true,
         );
         

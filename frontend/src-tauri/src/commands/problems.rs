@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateProblemRequest {
-    pub subject_id: String,
+    pub set_id: String,
     pub title: String,
     pub description: Option<String>,
     pub image_path: Option<String>,
@@ -34,11 +34,11 @@ pub async fn create_problem(
     db: State<'_, Db>,
     request: CreateProblemRequest,
 ) -> Result<String, String> {
-    let subject_id = Uuid::parse_str(&request.subject_id).map_err(|e| e.to_string())?;
+    let set_id = Uuid::parse_str(&request.set_id).map_err(|e| e.to_string())?;
 
     let problem = services::create_problem(
         db.connection(),
-        subject_id,
+        set_id,
         request.title,
         request.description,
         request.image_path,
@@ -62,13 +62,13 @@ pub async fn get_problem(db: State<'_, Db>, id: String) -> Result<String, String
 }
 
 #[tauri::command]
-pub async fn get_problems_by_subject(
+pub async fn get_problems_by_set(
     db: State<'_, Db>,
-    subject_id: String,
+    set_id: String,
 ) -> Result<String, String> {
-    let subject_uuid = Uuid::parse_str(&subject_id).map_err(|e| e.to_string())?;
+    let set_uuid = Uuid::parse_str(&set_id).map_err(|e| e.to_string())?;
 
-    let problems = services::get_problems_by_subject(db.connection(), subject_uuid)
+    let problems = services::get_problems_by_set(db.connection(), set_uuid)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -146,7 +146,7 @@ mod tests {
     #[test]
     fn test_create_problem_request_validation() {
         let request = CreateProblemRequest {
-            subject_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
+            set_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
             title: "Test Problem".to_string(),
             description: Some("Test Description".to_string()),
             image_path: None,
@@ -154,7 +154,7 @@ mod tests {
         };
 
         // Should parse UUID successfully
-        assert!(Uuid::parse_str(&request.subject_id).is_ok());
+        assert!(Uuid::parse_str(&request.set_id).is_ok());
     }
 
     #[test]

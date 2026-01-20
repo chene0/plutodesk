@@ -2,7 +2,7 @@ use sea_orm::*;
 use crate::db::entities::{
     folders, folders::Entity as Folder,
     courses, courses::Entity as Course,
-    subjects, subjects::Entity as Subject,
+    sets, sets::Entity as SetEntity,
     problems,
     users, users::Entity as User,
 };
@@ -136,27 +136,27 @@ pub async fn find_or_create_course(
     course.insert(db).await
 }
 
-/// Find or create a subject by course_id and name
-pub async fn find_or_create_subject(
+/// Find or create a set by course_id and name
+pub async fn find_or_create_set(
     db: &DatabaseConnection,
     course_id: Uuid,
     name: String,
-) -> Result<subjects::Model, DbErr> {
-    // Try to find existing subject
-    let subject = Subject::find()
-        .filter(subjects::Column::CourseId.eq(course_id))
-        .filter(subjects::Column::Name.eq(&name))
+) -> Result<sets::Model, DbErr> {
+    // Try to find existing set
+    let set = SetEntity::find()
+        .filter(sets::Column::CourseId.eq(course_id))
+        .filter(sets::Column::Name.eq(&name))
         .one(db)
         .await?;
 
-    if let Some(subject) = subject {
-        return Ok(subject);
+    if let Some(set) = set {
+        return Ok(set);
     }
 
     // Calculate sort_order (max + 1 or 0 if none exist)
-    let max_sort = Subject::find()
-        .filter(subjects::Column::CourseId.eq(course_id))
-        .order_by_desc(subjects::Column::SortOrder)
+    let max_sort = SetEntity::find()
+        .filter(sets::Column::CourseId.eq(course_id))
+        .order_by_desc(sets::Column::SortOrder)
         .one(db)
         .await?
         .map(|s| s.sort_order)
@@ -164,9 +164,9 @@ pub async fn find_or_create_subject(
 
     let sort_order = max_sort + 1;
 
-    // Create new subject
+    // Create new set
     let now = chrono::Utc::now().naive_utc();
-    let subject = subjects::ActiveModel {
+    let set = sets::ActiveModel {
         id: Set(Uuid::new_v4()),
         course_id: Set(course_id),
         name: Set(name),
@@ -177,7 +177,7 @@ pub async fn find_or_create_subject(
         is_synced: Set(false),
     };
 
-    subject.insert(db).await
+    set.insert(db).await
 }
 
 /// Save screenshot data to database, creating all necessary hierarchy entries
@@ -195,14 +195,14 @@ pub async fn save_screenshot_to_db(
     // Find or create course
     let course = find_or_create_course(db, folder.id, dto.course_name).await?;
 
-    // Find or create subject
-    let subject = find_or_create_subject(db, course.id, dto.subject_name).await?;
+    // Find or create set
+    let set = find_or_create_set(db, course.id, dto.set_name).await?;
 
     // Create problem with the screenshot
     let now = chrono::Utc::now().naive_utc();
     let problem = problems::ActiveModel {
         id: Set(Uuid::new_v4()),
-        subject_id: Set(subject.id),
+        set_id: Set(set.id),
         title: Set(dto.problem_name),
         description: Set(None),
         image_path: Set(Some(image_path)),
@@ -369,7 +369,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_find_or_create_subject_creates_subject() {
+    async fn test_find_or_create_set_creates_set() {
         let db = setup_test_db().await;
         let user_id = get_or_create_default_user(&db).await.expect("Failed to get/create user");
         let folder = find_or_create_folder(&db, user_id, "Test Folder".to_string())
@@ -379,17 +379,17 @@ mod tests {
             .await
             .expect("Failed to find/create course");
 
-        let subject = find_or_create_subject(&db, course.id, "Test Subject".to_string())
+        let set = find_or_create_set(&db, course.id, "Test Set".to_string())
             .await
-            .expect("Failed to find/create subject");
+            .expect("Failed to find/create set");
 
-        assert_eq!(subject.name, "Test Subject");
-        assert_eq!(subject.course_id, course.id);
-        assert_eq!(subject.sort_order, 0);
+        assert_eq!(set.name, "Test Set");
+        assert_eq!(set.course_id, course.id);
+        assert_eq!(set.sort_order, 0);
     }
 
     #[tokio::test]
-    async fn test_find_or_create_subject_returns_existing() {
+    async fn test_find_or_create_set_returns_existing() {
         let db = setup_test_db().await;
         let user_id = get_or_create_default_user(&db).await.expect("Failed to get/create user");
         let folder = find_or_create_folder(&db, user_id, "Test Folder".to_string())
@@ -399,18 +399,18 @@ mod tests {
             .await
             .expect("Failed to find/create course");
 
-        let subject1 = find_or_create_subject(&db, course.id, "Test Subject".to_string())
+        let set1 = find_or_create_set(&db, course.id, "Test Set".to_string())
             .await
-            .expect("Failed to find/create subject");
-        let subject2 = find_or_create_subject(&db, course.id, "Test Subject".to_string())
+            .expect("Failed to find/create set");
+        let set2 = find_or_create_set(&db, course.id, "Test Set".to_string())
             .await
-            .expect("Failed to find/create subject");
+            .expect("Failed to find/create set");
 
-        assert_eq!(subject1.id, subject2.id);
+        assert_eq!(set1.id, set2.id);
     }
 
     #[tokio::test]
-    async fn test_find_or_create_subject_sort_order_increments() {
+    async fn test_find_or_create_set_sort_order_increments() {
         let db = setup_test_db().await;
         let user_id = get_or_create_default_user(&db).await.expect("Failed to get/create user");
         let folder = find_or_create_folder(&db, user_id, "Test Folder".to_string())
@@ -420,15 +420,15 @@ mod tests {
             .await
             .expect("Failed to find/create course");
 
-        let subject1 = find_or_create_subject(&db, course.id, "Subject 1".to_string())
+        let set1 = find_or_create_set(&db, course.id, "Set 1".to_string())
             .await
-            .expect("Failed to find/create subject");
-        let subject2 = find_or_create_subject(&db, course.id, "Subject 2".to_string())
+            .expect("Failed to find/create set");
+        let set2 = find_or_create_set(&db, course.id, "Set 2".to_string())
             .await
-            .expect("Failed to find/create subject");
+            .expect("Failed to find/create set");
 
-        assert_eq!(subject1.sort_order, 0);
-        assert_eq!(subject2.sort_order, 1);
+        assert_eq!(set1.sort_order, 0);
+        assert_eq!(set2.sort_order, 1);
     }
 
     #[tokio::test]
@@ -438,7 +438,7 @@ mod tests {
         let dto = ScreenshotDto {
             folder_name: "Computer Science".to_string(),
             course_name: "Data Structures & Algorithms".to_string(),
-            subject_name: "Binary Trees".to_string(),
+            set_name: "Binary Trees".to_string(),
             problem_name: "Lowest Common Ancestor".to_string(),
             base64_data: "test_base64_data".to_string(),
         };
@@ -477,15 +477,15 @@ mod tests {
             .expect("Query failed")
             .expect("Course not found");
 
-        let subject = Subject::find()
-            .filter(subjects::Column::CourseId.eq(course.id))
-            .filter(subjects::Column::Name.eq("Binary Trees"))
+        let set = SetEntity::find()
+            .filter(sets::Column::CourseId.eq(course.id))
+            .filter(sets::Column::Name.eq("Binary Trees"))
             .one(&db)
             .await
             .expect("Query failed")
-            .expect("Subject not found");
+            .expect("Set not found");
 
-        assert_eq!(problem.subject_id, subject.id);
+        assert_eq!(problem.set_id, set.id);
     }
 
     #[tokio::test]
@@ -495,7 +495,7 @@ mod tests {
         let dto1 = ScreenshotDto {
             folder_name: "Computer Science".to_string(),
             course_name: "Data Structures & Algorithms".to_string(),
-            subject_name: "Binary Trees".to_string(),
+            set_name: "Binary Trees".to_string(),
             problem_name: "Problem 1".to_string(),
             base64_data: "test_base64_data_1".to_string(),
         };
@@ -503,7 +503,7 @@ mod tests {
         let dto2 = ScreenshotDto {
             folder_name: "Computer Science".to_string(),
             course_name: "Data Structures & Algorithms".to_string(),
-            subject_name: "Binary Trees".to_string(),
+            set_name: "Binary Trees".to_string(),
             problem_name: "Problem 2".to_string(),
             base64_data: "test_base64_data_2".to_string(),
         };
@@ -519,10 +519,10 @@ mod tests {
             .await
             .expect("Failed to save screenshot");
 
-        // Both problems should be in the same subject
-        assert_eq!(problem1.subject_id, problem2.subject_id);
+        // Both problems should be in the same set
+        assert_eq!(problem1.set_id, problem2.set_id);
 
-        // Verify only one folder, course, and subject exist
+        // Verify only one folder, course, and set exist
         let user = User::find()
             .filter(users::Column::Email.eq(DEFAULT_USER_EMAIL))
             .one(&db)
@@ -544,12 +544,12 @@ mod tests {
             .expect("Query failed");
         assert_eq!(courses.len(), 1);
 
-        let subjects = Subject::find()
-            .filter(subjects::Column::CourseId.eq(courses[0].id))
+        let sets = SetEntity::find()
+            .filter(sets::Column::CourseId.eq(courses[0].id))
             .all(&db)
             .await
             .expect("Query failed");
-        assert_eq!(subjects.len(), 1);
+        assert_eq!(sets.len(), 1);
     }
 }
 

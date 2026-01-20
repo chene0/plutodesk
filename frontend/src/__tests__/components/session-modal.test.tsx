@@ -24,9 +24,9 @@ describe('SessionModal', () => {
         { id: 'course-2', name: 'Data Structures', folder_id: 'folder-1', description: null, sort_order: 1 },
     ];
 
-    const mockSubjects = [
-        { id: 'subject-1', name: 'Dynamic Programming', course_id: 'course-1', description: null, sort_order: 0 },
-        { id: 'subject-2', name: 'Graphs', course_id: 'course-1', description: null, sort_order: 1 },
+    const mockSets = [
+        { id: 'set-1', name: 'Dynamic Programming', course_id: 'course-1', description: null, sort_order: 0 },
+        { id: 'set-2', name: 'Graphs', course_id: 'course-1', description: null, sort_order: 1 },
     ];
 
     beforeEach(() => {
@@ -45,8 +45,8 @@ describe('SessionModal', () => {
             if (cmd === 'get_courses_by_folder') {
                 return Promise.resolve(JSON.stringify(mockCourses));
             }
-            if (cmd === 'get_subjects_by_course') {
-                return Promise.resolve(JSON.stringify(mockSubjects));
+            if (cmd === 'get_sets_by_course') {
+                return Promise.resolve(JSON.stringify(mockSets));
             }
             return Promise.resolve(undefined);
         });
@@ -144,7 +144,7 @@ describe('SessionModal', () => {
             // and verify courses are loaded
         });
 
-        it('selecting course loads subjects for that course', async () => {
+        it('selecting course loads sets for that course', async () => {
             mockInvoke.mockImplementation((cmd: string, args?: any) => {
                 if (cmd === 'get_all_sessions') return Promise.resolve([]);
                 if (cmd === 'get_active_session') return Promise.resolve(null);
@@ -154,8 +154,8 @@ describe('SessionModal', () => {
                 if (cmd === 'get_courses_by_folder') {
                     return Promise.resolve(JSON.stringify(mockCourses));
                 }
-                if (cmd === 'get_subjects_by_course' && args?.courseId === 'course-1') {
-                    return Promise.resolve(JSON.stringify(mockSubjects));
+                if (cmd === 'get_sets_by_course' && args?.courseId === 'course-1') {
+                    return Promise.resolve(JSON.stringify(mockSets));
                 }
                 return Promise.resolve(JSON.stringify([]));
             });
@@ -163,15 +163,15 @@ describe('SessionModal', () => {
             render(<SessionModal />);
 
             // Would need to interact with the component to trigger course selection
-            // and verify subjects are loaded
+            // and verify sets are loaded
         });
 
-        it('changing folder clears course and subject', async () => {
-            // Selecting a different folder should clear the course and subject selections
+        it('changing folder clears course and set', async () => {
+            // Selecting a different folder should clear the course and set selections
         });
 
-        it('changing course clears subject', async () => {
-            // Selecting a different course should clear the subject selection
+        it('changing course clears set', async () => {
+            // Selecting a different course should clear the set selection
         });
     });
 
@@ -199,11 +199,11 @@ describe('SessionModal', () => {
             expect(isDuplicate).toBe(true);
         });
 
-        it('detects duplicate subject name (case-insensitive)', async () => {
-            const existingSubjects = mockSubjects;
+        it('detects duplicate set name (case-insensitive)', async () => {
+            const existingSets = mockSets;
             const newName = 'dynamic programming'; // Different case
 
-            const isDuplicate = existingSubjects.some(
+            const isDuplicate = existingSets.some(
                 s => s.name.toLowerCase() === newName.toLowerCase()
             );
 
@@ -224,7 +224,7 @@ describe('SessionModal', () => {
         });
 
         it('resets all mode flags on cancel', async () => {
-            // isCreatingNewFolder, isCreatingNewCourse, isCreatingNewSubject should all be false
+            // isCreatingNewFolder, isCreatingNewCourse, isCreatingNewSet should all be false
         });
 
         it('clears error message on cancel', async () => {
@@ -232,13 +232,13 @@ describe('SessionModal', () => {
         });
 
         it('clears selected IDs appropriately', async () => {
-            // selectedFolderId, selectedCourseId, selectedSubjectId should be null
+            // selectedFolderId, selectedCourseId, selectedSetId should be null
         });
     });
 
     describe('Session Creation Validation', () => {
         it('requires all fields to be filled', async () => {
-            // Test that form validation requires folder, course, and subject
+            // Test that form validation requires folder, course, and set
         });
 
         it('shows error if any field empty', async () => {
@@ -253,7 +253,7 @@ describe('SessionModal', () => {
                         name: 'Test Session',
                         folder_id: 'folder-1',
                         course_id: 'course-1',
-                        subject_id: 'subject-1',
+                        set_id: 'set-1',
                     });
                 }
                 return Promise.resolve([]);
@@ -270,7 +270,7 @@ describe('SessionModal', () => {
                         name: 'Test Session',
                         folder_id: 'new-folder-id',
                         course_id: 'new-course-id',
-                        subject_id: 'new-subject-id',
+                        set_id: 'new-set-id',
                     });
                 }
                 return Promise.resolve([]);
@@ -287,7 +287,7 @@ describe('SessionModal', () => {
                         name: 'Mixed Session',
                         folder_id: 'folder-1',
                         course_id: 'new-course-id',
-                        subject_id: 'new-subject-id',
+                        set_id: 'new-set-id',
                     });
                 }
                 return Promise.resolve([]);
@@ -305,14 +305,14 @@ describe('SessionModal', () => {
                     name: 'CS Session',
                     folder_name: 'Computer Science',
                     course_name: 'Algorithms',
-                    subject_name: 'Dynamic Programming',
+                    set_name: 'Dynamic Programming',
                 },
                 {
                     id: 'session-2',
                     name: 'Math Session',
                     folder_name: 'Mathematics',
                     course_name: 'Calculus',
-                    subject_name: 'Derivatives',
+                    set_name: 'Derivatives',
                 },
             ];
 
@@ -336,18 +336,18 @@ describe('SessionModal', () => {
             // Sessions should be displayed in the UI
         });
 
-        it('shows folder > course > subject hierarchy', async () => {
+        it('shows folder > course > set hierarchy', async () => {
             const session = {
                 id: 'session-1',
                 name: 'Test Session',
                 folder_name: 'Folder',
                 course_name: 'Course',
-                subject_name: 'Subject',
+                set_name: 'Set',
             };
 
-            // Display format should be "Folder / Course / Subject" or similar
-            const displayName = `${session.folder_name} / ${session.course_name} / ${session.subject_name}`;
-            expect(displayName).toBe('Folder / Course / Subject');
+            // Display format should be "Folder / Course / Set" or similar
+            const displayName = `${session.folder_name} / ${session.course_name} / ${session.set_name}`;
+            expect(displayName).toBe('Folder / Course / Set');
         });
 
         it('highlights active session', async () => {
@@ -356,7 +356,7 @@ describe('SessionModal', () => {
                 name: 'Active Session',
                 folder_name: 'Folder',
                 course_name: 'Course',
-                subject_name: 'Subject',
+                set_name: 'Set',
             };
 
             mockInvoke.mockImplementation((cmd: string) => {

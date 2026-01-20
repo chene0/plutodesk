@@ -37,16 +37,16 @@ pub fn run() {
             get_courses_by_folder,
             update_course,
             delete_course,
-            // Subject commands
-            create_subject,
-            get_subject,
-            get_subjects_by_course,
-            update_subject,
-            delete_subject,
+            // Set commands
+            create_set,
+            get_set,
+            get_sets_by_course,
+            update_set,
+            delete_set,
             // Problem commands
             create_problem,
             get_problem,
-            get_problems_by_subject,
+            get_problems_by_set,
             update_problem,
             update_problem_stats,
             delete_problem,

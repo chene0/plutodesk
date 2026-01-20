@@ -29,7 +29,7 @@ mod integration_tests {
         let dto = ScreenshotDto {
             folder_name: "Computer Science".to_string(),
             course_name: "Data Structures & Algorithms".to_string(),
-            subject_name: "Binary Trees".to_string(),
+            set_name: "Binary Trees".to_string(),
             problem_name: "Lowest Common Ancestor".to_string(),
             base64_data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==".to_string(),
         };
@@ -56,7 +56,7 @@ mod integration_tests {
         let dto1 = ScreenshotDto {
             folder_name: "Math".to_string(),
             course_name: "Calculus".to_string(),
-            subject_name: "Derivatives".to_string(),
+            set_name: "Derivatives".to_string(),
             problem_name: "Chain Rule".to_string(),
             base64_data: "test1".to_string(),
         };
@@ -68,7 +68,7 @@ mod integration_tests {
         let dto2 = ScreenshotDto {
             folder_name: "Math".to_string(),
             course_name: "Calculus".to_string(),
-            subject_name: "Derivatives".to_string(),
+            set_name: "Derivatives".to_string(),
             problem_name: "Product Rule".to_string(),
             base64_data: "test2".to_string(),
         };
@@ -76,15 +76,15 @@ mod integration_tests {
         let path2 = "Math/Calculus/Derivatives/Product_Rule.png".to_string();
         let problem2 = save_screenshot_to_db(&db, dto2, path2).await.expect("Failed to save");
 
-        // Both problems should be in the same subject
-        assert_eq!(problem1.subject_id, problem2.subject_id);
+        // Both problems should be in the same set
+        assert_eq!(problem1.set_id, problem2.set_id);
 
         // Verify hierarchy was reused
-        use crate::db::entities::{users, folders, courses, subjects};
+        use crate::db::entities::{users, folders, courses, sets};
         use crate::db::entities::users::Entity as User;
         use crate::db::entities::folders::Entity as Folder;
         use crate::db::entities::courses::Entity as Course;
-        use crate::db::entities::subjects::Entity as Subject;
+        use crate::db::entities::sets::Entity as Set;
 
         let user = User::find()
             .filter(users::Column::Email.eq("test@plutodesk.local"))
@@ -109,13 +109,13 @@ mod integration_tests {
         assert_eq!(courses.len(), 1);
         assert_eq!(courses[0].name, "Calculus");
 
-        let subjects = Subject::find()
-            .filter(subjects::Column::CourseId.eq(courses[0].id))
+        let sets = Set::find()
+            .filter(sets::Column::CourseId.eq(courses[0].id))
             .all(&db)
             .await
             .expect("Query failed");
-        assert_eq!(subjects.len(), 1);
-        assert_eq!(subjects[0].name, "Derivatives");
+        assert_eq!(sets.len(), 1);
+        assert_eq!(sets[0].name, "Derivatives");
     }
 
     // Note: Hotkey registration and triggering tests would require:
