@@ -554,4 +554,145 @@ mod session_commands_tests {
         );
         assert!(result.unwrap_err().contains("not found"));
     }
+
+    #[tokio::test]
+    async fn test_session_manager_initialization_with_corrupted_file() {
+        // This tests the unwrap_or_else behavior in lib.rs setup
+        let dir = tempdir().unwrap();
+        let sessions_path = dir.path().join("corrupted_sessions.json");
+        
+        // Write corrupted JSON
+        std::fs::write(&sessions_path, "{ invalid json }").expect("Failed to write file");
+        
+        // Simulate the lib.rs initialization logic
+        let result = SessionManager::load_from_file(&sessions_path);
+        assert!(result.is_err(), "Should return error for corrupted JSON");
+        
+        // Test the unwrap_or_else fallback behavior (as in lib.rs lines 90-94)
+        let session_manager = result.unwrap_or_else(|e| {
+            log::warn!("Failed to load sessions from file: {}, creating new SessionManager", e);
+            SessionManager::new()
+        });
+        
+        // Verify a new empty manager was created
+        assert_eq!(session_manager.sessions.len(), 0);
+        assert_eq!(session_manager.active_session_id, None);
+    }
+
+    #[tokio::test]
+    async fn test_session_manager_state_initialized_after_load_error() {
+        use std::sync::{Arc, Mutex};
+        
+        let dir = tempdir().unwrap();
+        let sessions_path = dir.path().join("corrupted.json");
+        std::fs::write(&sessions_path, "{ invalid }").unwrap();
+        
+        // Simulate lib.rs initialization
+        let session_manager = SessionManager::load_from_file(&sessions_path)
+            .unwrap_or_else(|e| {
+                log::warn!("Failed to load sessions from file: {}, creating new SessionManager", e);
+                SessionManager::new()
+            });
+        
+        // Verify state can be wrapped and managed (as in lib.rs line 96)
+        let state: Arc<Mutex<SessionManager>> = Arc::new(Mutex::new(session_manager));
+        
+        // Verify we can still use it
+        let manager = state.lock().unwrap();
+        assert_eq!(manager.sessions.len(), 0);
+        assert!(manager.get_active_session().is_none());
+    }
+
+    #[tokio::test]
+    async fn test_app_startup_with_corrupted_sessions_file() {
+        // Test that initialization doesn't panic and app can continue normally
+        let dir = tempdir().unwrap();
+        let sessions_path = dir.path().join("sessions.json");
+        
+        // Create corrupted file
+        std::fs::write(&sessions_path, "not valid json").unwrap();
+        
+        // Test that initialization doesn't panic (simulating lib.rs setup)
+        let session_manager = SessionManager::load_from_file(&sessions_path)
+            .unwrap_or_else(|e| {
+                log::warn!("Failed to load sessions from file: {}, creating new SessionManager", e);
+                SessionManager::new()
+            });
+        
+        // App should continue normally with empty session manager
+        assert_eq!(session_manager.sessions.len(), 0);
+        
+        // Should be able to create new sessions after error recovery
+        let folder_id = uuid::Uuid::new_v4();
+        let course_id = uuid::Uuid::new_v4();
+        let subject_id = uuid::Uuid::new_v4();
+        
+        let mut manager = session_manager;
+        manager.create_session(
+            "Test Session".to_string(),
+            folder_id,
+            course_id,
+            subject_id,
+            true,
+        );
+        
+        assert_eq!(manager.sessions.len(), 1);
+        assert!(manager.get_active_session().is_some());
+    }
+
+    #[tokio::test]
+    async fn test_session_manager_initialization_with_malformed_json() {
+        // Test various malformed JSON scenarios
+        let dir = tempdir().unwrap();
+        
+        let malformed_cases = vec![
+            ("{", "incomplete object"),
+            ("[", "incomplete array"),
+            ("null", "null value"),
+            ("\"string\"", "string instead of object"),
+            ("123", "number instead of object"),
+            ("", "empty file"),
+        ];
+        
+        for (content, description) in malformed_cases {
+            let sessions_path = dir.path().join(format!("malformed_{}.json", description.replace(" ", "_")));
+            std::fs::write(&sessions_path, content).expect("Failed to write file");
+            
+            let result = SessionManager::load_from_file(&sessions_path);
+            
+            // All malformed cases should result in error or empty manager
+            let session_manager = result.unwrap_or_else(|e| {
+                log::warn!("Failed to load sessions from file: {}, creating new SessionManager", e);
+                SessionManager::new()
+            });
+            
+            // Should always get a valid (empty) manager
+            assert_eq!(session_manager.sessions.len(), 0, "Failed for case: {}", description);
+            assert_eq!(session_manager.active_session_id, None, "Failed for case: {}", description);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_session_manager_initialization_with_valid_but_empty_file() {
+        // Test that an empty JSON object is handled correctly
+        let dir = tempdir().unwrap();
+        let sessions_path = dir.path().join("empty.json");
+        
+        // Write valid but empty JSON
+        std::fs::write(&sessions_path, "{}").expect("Failed to write file");
+        
+        // This should fail because the JSON doesn't match SessionManager structure
+        // But we want to test the fallback
+        let result = SessionManager::load_from_file(&sessions_path);
+        
+        // If it fails, unwrap_or_else should create new manager
+        let session_manager = result.unwrap_or_else(|e| {
+            log::warn!("Failed to load sessions from file: {}, creating new SessionManager", e);
+            SessionManager::new()
+        });
+        
+        // Should have a valid manager
+        assert_eq!(session_manager.sessions.len(), 0);
+        assert_eq!(session_manager.active_session_id, None);
+    }
 }
