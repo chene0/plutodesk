@@ -1,0 +1,8 @@
+[build]
+jobs = 8 # set to your CPU core count
+
+[env]
+RUSTC_WRAPPER = "sccache"
+
+[target.x86_64-pc-windows-msvc]
+linker = "rust-lld"
