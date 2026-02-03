@@ -1,3 +1,4 @@
+use crate::problem_naming::suggest_problem_name;
 use sanitize_filename::sanitize;
 use std::fs;
 use std::path::PathBuf;
@@ -371,7 +372,6 @@ fn write_image_data_url_to_local_fs(
 pub async fn receive_screenshot_data(
     app: AppHandle,
     image_url: String,
-    problem_name: String,
     folder_id: Option<String>,
     course_id: Option<String>,
     set_id: Option<String>,
@@ -462,11 +462,13 @@ pub async fn receive_screenshot_data(
             ))
         })?;
 
+    let problem_name = suggest_problem_name(image_url.clone()).await;
+
     let dto = ScreenshotDto {
         folder_name: folder.name,
         course_name: course.name,
         set_name: set.name,
-        problem_name: problem_name.clone(),
+        problem_name,
         base64_data: image_url,
     };
 

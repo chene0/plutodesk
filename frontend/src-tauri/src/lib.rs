@@ -1,6 +1,7 @@
 mod commands;
 mod db;
 mod dtos;
+mod problem_naming;
 mod screenshot;
 mod session;
 mod tray;
