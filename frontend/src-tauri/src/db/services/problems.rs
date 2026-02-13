@@ -26,6 +26,7 @@ pub async fn create_problem(
         last_attempted: Set(None),
         attempt_count: Set(0),
         success_rate: Set(0.0),
+        difficulty_rating: Set(0),
         is_synced: Set(false),
         last_modified: Set(now),
     };
@@ -130,6 +131,36 @@ pub async fn delete_problem(
     id: Uuid,
 ) -> Result<DeleteResult, DbErr> {
     Problem::delete_by_id(id).exec(db).await
+}
+
+/// Sync the problem's difficulty_rating from its most recent attempt.
+/// Call this after creating or updating a problem attempt.
+pub async fn sync_problem_difficulty(
+    db: &DatabaseConnection,
+    problem_id: Uuid,
+) -> Result<(), DbErr> {
+    use crate::db::services::problem_attempts::get_attempts_by_problem;
+
+    let attempts = get_attempts_by_problem(db, problem_id).await?;
+    let difficulty = attempts
+        .first()
+        .map(|a| a.difficulty_rating)
+        .unwrap_or(0);
+
+    let problem = Problem::find_by_id(problem_id)
+        .one(db)
+        .await?
+        .ok_or(DbErr::RecordNotFound("Problem not found".to_string()))?;
+
+    let mut problem: problems::ActiveModel = problem.into();
+    let now = chrono::Utc::now().naive_utc();
+    problem.difficulty_rating = Set(difficulty);
+    problem.updated_at = Set(now);
+    problem.last_modified = Set(now);
+    problem.is_synced = Set(false);
+    problem.update(db).await?;
+
+    Ok(())
 }
 
 #[cfg(test)]

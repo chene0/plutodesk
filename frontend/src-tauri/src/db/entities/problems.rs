@@ -18,6 +18,7 @@ pub struct Model {
     pub last_attempted: Option<DateTime>,
     pub attempt_count: i32,
     pub success_rate: f32,
+    pub difficulty_rating: i32,
     pub is_synced: bool,
     pub last_modified: DateTime,
 }

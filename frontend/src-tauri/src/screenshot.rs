@@ -375,6 +375,7 @@ pub async fn receive_screenshot_data(
     folder_id: Option<String>,
     course_id: Option<String>,
     set_id: Option<String>,
+    difficulty_rating: i32,
 ) -> Result<(), tauri::Error> {
     use crate::session::SessionManagerState;
     use uuid::Uuid;
@@ -476,7 +477,7 @@ pub async fn receive_screenshot_data(
     let image_path = write_image_data_url_to_local_fs(app.clone(), dto.clone())?;
 
     // Save to database
-    services::save_screenshot_to_db(db.connection(), dto, image_path)
+    let problem = services::save_screenshot_to_db(db.connection(), dto, image_path)
         .await
         .map_err(|e| {
             tauri::Error::from(std::io::Error::new(
@@ -484,6 +485,52 @@ pub async fn receive_screenshot_data(
                 format!("Database error: {}", e),
             ))
         })?;
+
+    // Get current difficulty from previous attempts, or default to 0
+    let previous_attempts = services::get_attempts_by_problem(db.connection(), problem.id)
+        .await
+        .map_err(|e| {
+            tauri::Error::from(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Failed to get previous attempts: {}", e),
+            ))
+        })?;
+    
+    let current_difficulty = previous_attempts
+        .first()
+        .map(|attempt| attempt.difficulty_rating)
+        .unwrap_or(0);
+
+    // Map difficulty_rating (1-4) to delta values
+    // 1 = Very Easy → -2, 2 = Easy → -1, 3 = Hard → 1, 4 = Very Hard → 2
+    let delta = match difficulty_rating {
+        1 => -2, // Very Easy
+        2 => -1, // Easy
+        3 => 1,  // Hard
+        4 => 2,  // Very Hard
+        _ => 0,  // Default fallback
+    };
+
+    // Calculate final difficulty
+    let final_difficulty = current_difficulty + delta;
+
+    // Create an initial problem attempt with the calculated difficulty
+    services::create_problem_attempt(
+        db.connection(),
+        problem.id,
+        0, // time_spent_seconds: 0 for initial capture
+        final_difficulty,
+        0, // confidence_level: 0 initially
+        false, // was_successful: false initially
+        None, // notes: None initially
+    )
+    .await
+    .map_err(|e| {
+        tauri::Error::from(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("Failed to create initial attempt: {}", e),
+        ))
+    })?;
 
     Ok(())
 }

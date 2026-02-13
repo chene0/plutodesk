@@ -214,6 +214,7 @@ pub async fn save_screenshot_to_db(
         last_attempted: Set(None),
         attempt_count: Set(0),
         success_rate: Set(0.0),
+        difficulty_rating: Set(0),
         is_synced: Set(false),
         last_modified: Set(now),
     };

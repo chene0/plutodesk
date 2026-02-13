@@ -1,5 +1,6 @@
 use sea_orm::*;
 use crate::db::entities::{problem_attempts, problem_attempts::Entity as ProblemAttempt};
+use crate::db::services::problems;
 use uuid::Uuid;
 
 pub async fn create_problem_attempt(
@@ -25,7 +26,9 @@ pub async fn create_problem_attempt(
         is_synced: Set(false),
     };
 
-    attempt.insert(db).await
+    let attempt = attempt.insert(db).await?;
+    problems::sync_problem_difficulty(db, problem_id).await?;
+    Ok(attempt)
 }
 
 pub async fn get_attempt_by_id(
@@ -80,12 +83,25 @@ pub async fn update_attempt(
 
     attempt.is_synced = Set(false);
 
-    attempt.update(db).await
+    let result = attempt.update(db).await?;
+    problems::sync_problem_difficulty(db, result.problem_id).await?;
+    Ok(result)
 }
 
 pub async fn delete_attempt(
     db: &DatabaseConnection,
     id: Uuid,
 ) -> Result<DeleteResult, DbErr> {
-    ProblemAttempt::delete_by_id(id).exec(db).await
+    let attempt = ProblemAttempt::find_by_id(id)
+        .one(db)
+        .await?
+        .ok_or(DbErr::RecordNotFound("Attempt not found".to_string()))?;
+
+    let problem_id = attempt.problem_id;
+    let result = ProblemAttempt::delete_by_id(id).exec(db).await?;
+
+    // Sync problem difficulty after deletion (will use next most recent or 0)
+    let _ = problems::sync_problem_difficulty(db, problem_id).await;
+
+    Ok(result)
 }

@@ -186,6 +186,7 @@ pub async fn seed(db: &DatabaseConnection) -> Result<(), DbErr> {
                 Problems::LastModified,
                 Problems::AttemptCount,
                 Problems::SuccessRate,
+                Problems::DifficultyRating,
                 Problems::IsSynced,
             ])
             .values_panic([
@@ -199,6 +200,7 @@ pub async fn seed(db: &DatabaseConnection) -> Result<(), DbErr> {
                 now_str.clone().into(),
                 0.into(),
                 0.0.into(),
+                0.into(),
                 false.into(),
             ])
             .to_owned();
@@ -241,6 +243,15 @@ pub async fn seed(db: &DatabaseConnection) -> Result<(), DbErr> {
         .await?;
 
     log::info!("Created test problem attempt");
+
+    // Sync first problem's difficulty_rating from its attempt (difficulty 3)
+    let update_problem = Query::update()
+        .table(Problems::Table)
+        .value(Problems::DifficultyRating, 3)
+        .and_where(Expr::col(Problems::Id).eq(problem_ids[0].clone()))
+        .to_owned();
+    db.execute(db.get_database_backend().build(&update_problem))
+        .await?;
 
     log::info!("Database seeding completed successfully!");
     Ok(())
@@ -311,6 +322,7 @@ enum Problems {
     LastModified,
     AttemptCount,
     SuccessRate,
+    DifficultyRating,
     IsSynced,
 }
 

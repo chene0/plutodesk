@@ -20,12 +20,25 @@ interface ScreenshotOverlayProps {
   onClose: () => void;
 }
 
+type DifficultyLevel = 1 | 2 | 3 | 4;
+
+const DIFFICULTY_OPTIONS: { level: DifficultyLevel; label: string; color: string }[] = [
+  { level: 1, label: "Very Easy", color: "bg-green-500 hover:bg-green-600" },
+  { level: 2, label: "Easy", color: "bg-blue-500 hover:bg-blue-600" },
+  { level: 3, label: "Hard", color: "bg-orange-500 hover:bg-orange-600" },
+  { level: 4, label: "Very Hard", color: "bg-red-500 hover:bg-red-600" },
+];
+
 export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const [isSelecting, setIsSelecting] = useState(false);
   const [selection, setSelection] = useState<SelectionArea | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+  
+  // Difficulty selection state
+  const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel | null>(null);
+  const [isMinimized, setIsMinimized] = useState(false);
 
   // Create Window instance inside component to avoid stale references
   // Use a ref to ensure we only create it once per component instance
@@ -122,6 +135,9 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
   useTauriListeners("open_screenshot_overlay", handleScreenshotEvent);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    // Block selection if difficulty not selected
+    if (!selectedDifficulty) return;
+    
     const overlayEl = overlayRef.current;
     if (!overlayEl) return;
     // only start when clicking the overlay background (same behavior as before)
@@ -145,7 +161,7 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
       endX: startX,
       endY: startY,
     });
-  }, []);
+  }, [selectedDifficulty]);
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
@@ -231,7 +247,7 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
         console.warn("[screenshot-overlay] releasePointerCapture failed", err);
       }
 
-      if (isSelecting && selection) {
+      if (isSelecting && selection && selectedDifficulty) {
         setIsSelecting(false);
         const croppedDataUrl = cropSelection();
 
@@ -243,6 +259,7 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
             folderId: null,
             courseId: null,
             setId: null,
+            difficultyRating: selectedDifficulty,
           });
           onClose();
         } catch (err) {
@@ -252,7 +269,7 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
         }
       }
     },
-    [isSelecting, selection, cropSelection, onClose],
+    [isSelecting, selection, selectedDifficulty, cropSelection, onClose],
   );
 
   const handleKeyDown = useCallback(
@@ -262,9 +279,25 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
         setSelection(null);
         onClose();
       }
+      
+      // Difficulty selection keybinds (1-4)
+      if (e.key >= "1" && e.key <= "4") {
+        const difficultyLevel = parseInt(e.key) as DifficultyLevel;
+        setSelectedDifficulty(difficultyLevel);
+        if (!isMinimized) {
+          setIsMinimized(true);
+        }
+      }
     },
-    [onClose],
+    [onClose, isMinimized],
   );
+
+  const handleDifficultySelect = useCallback((level: DifficultyLevel) => {
+    setSelectedDifficulty(level);
+    if (!isMinimized) {
+      setIsMinimized(true);
+    }
+  }, [isMinimized]);
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown);
@@ -313,12 +346,59 @@ export function ScreenshotOverlay({ onClose }: ScreenshotOverlayProps) {
         <X size={20} />
       </button>
 
+      {/* Difficulty Selection */}
+      {!selectedDifficulty && !isMinimized && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-60 bg-white/95 rounded-lg shadow-2xl p-8 select-none">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
+            Select Problem Difficulty
+          </h2>
+          <div className="flex gap-4">
+            {DIFFICULTY_OPTIONS.map((option) => (
+              <button
+                key={option.level}
+                onClick={() => handleDifficultySelect(option.level)}
+                className={`${option.color} text-white px-8 py-6 rounded-lg text-lg font-semibold shadow-lg transition-all transform hover:scale-105 active:scale-95 flex flex-col items-center gap-2 min-w-[140px]`}
+              >
+                <span className="text-sm opacity-90">Press {option.level}</span>
+                <span>{option.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Minimized difficulty bar */}
+      {selectedDifficulty && isMinimized && (
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-60 bg-white/95 rounded-lg shadow-lg px-6 py-3 select-none">
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium text-gray-600">Difficulty:</span>
+            <div className="flex gap-2">
+              {DIFFICULTY_OPTIONS.map((option) => (
+                <button
+                  key={option.level}
+                  onClick={() => setSelectedDifficulty(option.level)}
+                  className={`${
+                    selectedDifficulty === option.level
+                      ? option.color.replace("hover:", "")
+                      : "bg-gray-300 hover:bg-gray-400"
+                  } text-white px-4 py-2 rounded text-sm font-semibold transition-all transform hover:scale-105 active:scale-95`}
+                >
+                  {option.level}. {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Instructions */}
-      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-60 bg-white/90 text-gray-800 px-4 py-2 rounded-lg shadow-lg select-none">
-        <p className="text-sm font-medium">
-          Click and drag to select an area • Press ESC to cancel
-        </p>
-      </div>
+      {selectedDifficulty && (
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-60 bg-white/90 text-gray-800 px-4 py-2 rounded-lg shadow-lg select-none">
+          <p className="text-sm font-medium">
+            Click and drag to select an area • Press ESC to cancel
+          </p>
+        </div>
+      )}
 
       {/* Selection area */}
       {selection && (
